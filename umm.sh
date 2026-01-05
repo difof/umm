@@ -87,6 +87,167 @@ _build_editor_args() {
   printf '%s\n' "${args[@]}"
 }
 
+# Validate if a path is within a git repository
+_git_validate_repo() {
+  local repo_path="$1"
+  
+  # Check if git is available
+  if ! command -v git >/dev/null 2>&1; then
+    _error "git is not installed"
+    return 1
+  fi
+  
+  # Check if path is in a git repository
+  if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+    _error "Not a git repository: ${C_CYAN}$repo_path${C_RESET}"
+    return 1
+  fi
+  
+  return 0
+}
+
+# Aggregate all git objects into searchable format with prefixes
+_git_aggregate_data() {
+  local repo_path="$1"
+  local pattern="$2"
+  
+  # Collect commits (limit to 1000 for performance)
+  git -C "$repo_path" log --oneline --all --color=always -n 1000 2>/dev/null | \
+    sed 's/^/commit:  /' || true
+  
+  # Collect branches (local and remote)
+  git -C "$repo_path" branch -a --color=always 2>/dev/null | \
+    sed 's/^/branch:  /' || true
+  
+  # Collect tags with annotations
+  git -C "$repo_path" tag -l --format="%(refname:short) %(subject)" 2>/dev/null | \
+    sed 's/^/tag:     /' || true
+  
+  # Collect reflog entries (limit to 100)
+  git -C "$repo_path" reflog --color=always -n 100 2>/dev/null | \
+    sed 's/^/reflog:  /' || true
+  
+  # Collect stashes
+  git -C "$repo_path" stash list 2>/dev/null | \
+    sed 's/^/stash:   /' || true
+}
+
+# Generate preview based on selected git object type
+_git_preview() {
+  local repo_path="$1"
+  local line="$2"
+  
+  # Extract type prefix
+  local type="${line%%:*}"
+  # Remove prefix and leading spaces
+  local content="${line#*:}"
+  content="${content#"${content%%[![:space:]]*}"}"
+  
+  case "$type" in
+    commit)
+      # Extract commit hash (first word after prefix)
+      local hash=$(echo "$content" | awk '{print $1}')
+      git -C "$repo_path" show --color=always --stat "$hash" 2>/dev/null || \
+        echo "Error: Could not show commit $hash"
+      ;;
+    branch)
+      # Extract branch name (remove leading * and spaces)
+      local branch=$(echo "$content" | sed 's/^[* ]*//' | awk '{print $1}')
+      echo "Recent commits on branch: $branch"
+      echo "----------------------------------------"
+      git -C "$repo_path" log --oneline --color=always -10 "$branch" 2>/dev/null || \
+        echo "Error: Could not show branch $branch"
+      ;;
+    tag)
+      # Extract tag name (first word)
+      local tag=$(echo "$content" | awk '{print $1}')
+      git -C "$repo_path" show --color=always --stat "$tag" 2>/dev/null || \
+        echo "Error: Could not show tag $tag"
+      ;;
+    reflog)
+      # Extract reflog entry (first word like HEAD@{0})
+      local entry=$(echo "$content" | awk '{print $1}')
+      git -C "$repo_path" show --color=always --stat "$entry" 2>/dev/null || \
+        echo "Error: Could not show reflog entry $entry"
+      ;;
+    stash)
+      # Extract stash id (like stash@{0})
+      local stash=$(echo "$content" | grep -o 'stash@{[0-9]*}' | head -n1)
+      git -C "$repo_path" stash show -p --color=always "$stash" 2>/dev/null || \
+        echo "Error: Could not show stash $stash"
+      ;;
+    *)
+      echo "Unknown type: $type"
+      ;;
+  esac
+}
+
+# Main git search function
+_git_search() {
+  local repo_path="$1"
+  local pattern="$2"
+  
+  # Get absolute path for repo
+  repo_path=$(cd "$repo_path" && pwd)
+  
+  # Create a temporary wrapper script for preview
+  # This is needed because fzf preview needs to call our function
+  local preview_script=$(mktemp)
+  cat > "$preview_script" << 'PREVIEW_EOF'
+#!/usr/bin/env bash
+source "$UMM_SCRIPT_PATH"
+_git_preview "$UMM_REPO_PATH" "$1"
+PREVIEW_EOF
+  chmod +x "$preview_script"
+  
+  # Export variables for preview script
+  export UMM_SCRIPT_PATH="${BASH_SOURCE[0]:-${(%):-%x}}"
+  export UMM_REPO_PATH="$repo_path"
+  
+  # Aggregate git data
+  local git_data=$(_git_aggregate_data "$repo_path" "$pattern")
+  
+  if [[ -z "$git_data" ]]; then
+    _error "No git objects found in repository"
+    rm -f "$preview_script"
+    return 1
+  fi
+  
+  # Build fzf options
+  local fzf_opts=(
+    --ansi
+    --no-sort
+    --tiebreak=index
+    --query="$pattern"
+    --delimiter=':'
+    --prompt="> Git: "
+    --info=inline
+    --preview="$preview_script {}"
+    --preview-window="top:60%"
+    --bind "ctrl-/:toggle-preview"
+    --header="COMMITS | BRANCHES | TAGS | REFLOG | STASHES"
+  )
+  
+  # Run fzf
+  local selected=$(echo "$git_data" | fzf "${fzf_opts[@]}")
+  
+  # Clean up
+  rm -f "$preview_script"
+  unset UMM_SCRIPT_PATH
+  unset UMM_REPO_PATH
+  
+  # Check if selection was made
+  if [[ -z "$selected" ]]; then
+    _info "Search cancelled"
+    return 0
+  fi
+  
+  # Strip prefix and output
+  local content="${selected#*:}"
+  content="${content#"${content%%[![:space:]]*}"}"
+  echo "$content"
+}
+
 umm() {
   # Use EDITOR environment variable, default to nvim
   local UMM_EDITOR="${EDITOR:-nvim}"
@@ -98,6 +259,7 @@ umm() {
   local -a exclude_patterns=()
   local scan_all=false
   local positional_set=false
+  local git_mode=false
   
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -115,6 +277,9 @@ OPTIONS:
                          Can be used multiple times
                          Examples: '*.log', 'test/', '**/tmp/**'
   -a, --all              Search all files (ignore .gitignore, include hidden)
+  -g, --git              Search git repository (commits, branches, tags, etc.)
+                         Combines all git objects into one searchable list
+                         Use prefixes to filter: commit:, branch:, tag:, etc.
   -n, --noui             Non-interactive mode, open first match
   -d, --max-depth N      Maximum search depth
   -h, --help             Show this help
@@ -135,6 +300,12 @@ EXAMPLES:
   umm -e "*.log" -e "test"           # Exclude log files and test directories
   umm -a                             # Search all files (ignore .gitignore)
   umm -p "TODO" -n ~/src             # Open first match directly
+  
+  Git Mode:
+  umm -g                             # Search all git objects (commits, branches, etc.)
+  umm -g -p "fix"                    # Search git objects with initial pattern
+  umm -g ~/projects/repo             # Search git objects in specific repository
+  umm -g -p "commit:" | cut -d' ' -f1 | xargs git show  # Pipe to git commands
 EOF
         return 0
         ;;
@@ -172,6 +343,10 @@ EOF
         ;;
       --all|-a)
         scan_all=true
+        shift
+        ;;
+      --git|-g)
+        git_mode=true
         shift
         ;;
       --noui|-n)
@@ -217,6 +392,18 @@ EOF
   if [[ ! -d "$root" ]]; then
     _error "Directory '$root' does not exist"
     return 1
+  fi
+  
+  # Git mode branch
+  if [[ "$git_mode" == true ]]; then
+    # Validate git repository
+    if ! _git_validate_repo "$root"; then
+      return 1
+    fi
+    
+    # Run git search
+    _git_search "$root" "$pattern"
+    return $?
   fi
   
   # Check pattern required for noui mode
@@ -380,6 +567,7 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
       '(-p --pattern)'{-p,--pattern}'[Search pattern]:pattern:'
       '*'{-e,--exclude}'[Exclude pattern (gitignore-style glob)]:pattern:'
       '(-a --all)'{-a,--all}'[Search all files (ignore .gitignore, include hidden)]'
+      '(-g --git)'{-g,--git}'[Search git repository (commits, branches, tags, etc.)]'
       '(-n --noui)'{-n,--noui}'[Non-interactive mode]'
       '(-d --max-depth)'{-d,--max-depth}'[Maximum depth]:depth:'
       '1:root path:_files -/'
