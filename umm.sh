@@ -95,6 +95,9 @@ umm() {
   local pattern=""
   local noui=false
   local max_depth=""
+  local -a exclude_patterns=()
+  local scan_all=false
+  local positional_set=false
   
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -104,41 +107,40 @@ umm() {
 umm - Ultimate Multi-file Matcher
 
 USAGE:
-  umm [OPTIONS]
+  umm [OPTIONS] [root_path]
 
 OPTIONS:
-  -r, --root PATH       Search directory (default: current directory)
-  -p, --pattern REGEXP  Initial search pattern
-  -n, --noui            Non-interactive mode, open first match
-  -d, --max-depth N     Maximum search depth
-  -h, --help            Show this help
-  -v, --version         Show version
+  -p, --pattern REGEXP   Initial search pattern
+  -e, --exclude PATTERN  Exclude file/directory pattern (gitignore-style glob)
+                         Can be used multiple times
+                         Examples: '*.log', 'test/', '**/tmp/**'
+  -a, --all              Search all files (ignore .gitignore, include hidden)
+  -n, --noui             Non-interactive mode, open first match
+  -d, --max-depth N      Maximum search depth
+  -h, --help             Show this help
+  -v, --version          Show version
+
+ARGUMENTS:
+  root_path              Directory to search (default: current directory)
 
 ENVIRONMENT:
-  EDITOR                Editor to use (default: nvim)
-                        Supported: vim, vi, nvim, nano, micro, emacs,
-                        code, subl, and more
+  EDITOR                 Editor to use (default: nvim)
+                         Supported: vim, vi, nvim, nano, micro, emacs,
+                         code, subl, and more
 
 EXAMPLES:
-  umm                        # Interactive search
-  umm -p "function"          # Search for pattern
-  umm -r ~/projects          # Search in directory
-  umm -p "TODO" -n           # Open first match directly
-  EDITOR=micro umm           # Use micro editor
+  umm                                # Interactive search in current directory
+  umm ~/projects                     # Search in ~/projects
+  umm -p "function" ~/projects       # Search with initial pattern
+  umm -e "*.log" -e "test"           # Exclude log files and test directories
+  umm -a                             # Search all files (ignore .gitignore)
+  umm -p "TODO" -n ~/src             # Open first match directly
 EOF
         return 0
         ;;
       --version|-v)
         echo "umm version $UMM_VERSION"
         return 0
-        ;;
-      --root|-r)
-        if [[ -z "$2" || "$2" == -* ]]; then
-          _error "Option --root requires a value"
-          return 1
-        fi
-        root="$2"
-        shift 2
         ;;
       --pattern|-p)
         if [[ -z "$2" || "$2" == -* ]]; then
@@ -160,14 +162,36 @@ EOF
         max_depth="$2"
         shift 2
         ;;
+      --exclude|-e)
+        if [[ -z "$2" || "$2" == -* ]]; then
+          _error "Option --exclude requires a value"
+          return 1
+        fi
+        exclude_patterns+=("$2")
+        shift 2
+        ;;
+      --all|-a)
+        scan_all=true
+        shift
+        ;;
       --noui|-n)
         noui=true
         shift
         ;;
       *)
-        _error "Unknown option: $1"
-        echo "Use ${C_CYAN}--help${C_RESET} for usage" >&2
-        return 1
+        if [[ "$1" == -* ]]; then
+          _error "Unknown option: $1"
+          echo "Use ${C_CYAN}--help${C_RESET} for usage" >&2
+          return 1
+        fi
+        # Positional argument (root path)
+        if [[ "$positional_set" == true ]]; then
+          _error "Too many arguments. Expected: umm [OPTIONS] [root_path]"
+          return 1
+        fi
+        root="$1"
+        positional_set=true
+        shift
         ;;
     esac
   done
@@ -214,6 +238,16 @@ EOF
   fi
   
   [[ -n "$max_depth" ]] && rg_opts+=(--max-depth "$max_depth")
+  
+  # Add exclude patterns
+  for exclude_pattern in "${exclude_patterns[@]}"; do
+    rg_opts+=(--glob "!$exclude_pattern")
+  done
+  
+  # Add --all flag options
+  if [[ "$scan_all" == true ]]; then
+    rg_opts+=(--no-ignore --hidden)
+  fi
   
   local selected
   
@@ -343,10 +377,12 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
     opts=(
       '(-h --help)'{-h,--help}'[Show help]'
       '(-v --version)'{-v,--version}'[Show version]'
-      '(-r --root)'{-r,--root}'[Search directory]:directory:_files -/'
       '(-p --pattern)'{-p,--pattern}'[Search pattern]:pattern:'
+      '*'{-e,--exclude}'[Exclude pattern (gitignore-style glob)]:pattern:'
+      '(-a --all)'{-a,--all}'[Search all files (ignore .gitignore, include hidden)]'
       '(-n --noui)'{-n,--noui}'[Non-interactive mode]'
       '(-d --max-depth)'{-d,--max-depth}'[Maximum depth]:depth:'
+      '1:root path:_files -/'
     )
     _arguments $opts
   }
