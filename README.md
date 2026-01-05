@@ -62,12 +62,56 @@ source ~/.bashrc
 ## Usage
 
 ```bash
-umm                          # Interactive search
-umm -p "function"            # Start with pattern
-umm -r ~/projects            # Search directory
-umm -r ~/projects -p "TODO"  # Both
-umm -p "error" -n            # Open first match (no UI)
-umm -d 3                     # Limit depth
+umm                                # Interactive search in current directory
+umm ~/projects                     # Search in specific directory
+umm -p "function"                  # Start with pattern
+umm -p "TODO" ~/projects           # Search with pattern in directory
+umm -e "*.log" -e "test"           # Exclude patterns (gitignore-style globs)
+umm -a                             # Search all files (ignore .gitignore, include hidden)
+umm -p "error" -n                  # Open first match (no UI)
+umm -d 3                           # Limit search depth
+```
+
+### Default Behavior
+
+**umm uses ripgrep's smart defaults:**
+
+- **Respects `.gitignore`** - Automatically excludes files/directories listed in `.gitignore`
+- **Excludes `.git` directory** - Never searches inside `.git` by default
+- **Excludes hidden files** - Files/directories starting with `.` are skipped (except `.gitignore` itself)
+- **Skips binary files** - Binary files are automatically detected and excluded
+
+To search **everything** (override all defaults), use the `--all` flag.
+
+### Options
+
+- `-p, --pattern REGEXP` - Initial search pattern
+- `-e, --exclude PATTERN` - Exclude file/directory pattern (can be used multiple times)
+- `-a, --all` - Search all files including .gitignore'd and hidden files
+- `-n, --noui` - Non-interactive mode, open first match directly
+- `-d, --max-depth N` - Maximum search depth
+- `-h, --help` - Show help
+- `-v, --version` - Show version
+
+### Exclude Patterns
+
+Exclude files or directories using gitignore-style glob patterns:
+
+```bash
+umm -e "*.log"                     # Exclude all .log files
+umm -e "test" -e "vendor"          # Exclude multiple patterns
+umm -e "**/node_modules/**"        # Exclude nested directories
+umm -e "test\ dir"                 # Escape spaces in patterns
+```
+
+### Search All Files
+
+By default, umm respects `.gitignore` and excludes hidden files (via ripgrep's defaults). Use `--all` to override:
+
+```bash
+umm -a                             # Search everything (ignore .gitignore, include hidden)
+umm -a -e ".git"                   # Search all but exclude .git directory
+umm -a -p "SECRET" ~/project       # Find sensitive data in all files
 ```
 
 ### Editor Support
@@ -124,9 +168,10 @@ Preview updates as you navigate because fzf re-runs the command with new values.
 
 1. **Debouncing** - Wait 50ms between keystrokes
 2. **Binary skipping** - ripgrep skips binary files automatically
-3. **Gitignore respect** - Skips `node_modules`, `.git` automatically
-4. **Depth limiting** - Optional `--max-depth`
-5. **Smart case** - Case-insensitive unless uppercase in query
+3. **Gitignore respect** - ripgrep respects `.gitignore` by default (use `--all` to override)
+4. **Hidden files excluded** - Hidden files/directories excluded by default (use `--all` to include)
+5. **Depth limiting** - Optional `--max-depth` flag
+6. **Smart case** - Case-insensitive unless uppercase in query
 
 ## Troubleshooting
 
