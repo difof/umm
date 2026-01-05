@@ -30,6 +30,29 @@ _success() { echo -e "${C_GREEN}*${C_RESET} $*" >&2; }
 _info() { echo -e "${C_CYAN}i${C_RESET} $*" >&2; }
 _warn() { echo -e "${C_YELLOW}!${C_RESET} $*" >&2; }
 
+# Diff pager detection with fallback chain: delta > bat > cat
+# Returns the command to use for piping diff output
+_get_diff_pager() {
+  if command -v delta >/dev/null 2>&1; then
+    echo "delta"
+  elif command -v bat >/dev/null 2>&1; then
+    echo "bat --style=numbers,changes --language=diff --color=always"
+  else
+    echo "cat"
+  fi
+}
+
+# Check which diff pager is available (for debugging/testing)
+_get_diff_pager_name() {
+  if command -v delta >/dev/null 2>&1; then
+    echo "delta"
+  elif command -v bat >/dev/null 2>&1; then
+    echo "bat"
+  else
+    echo "cat"
+  fi
+}
+
 # Get editor type and build appropriate arguments
 _build_editor_args() {
   local editor="$1"
@@ -133,6 +156,7 @@ _git_aggregate_data() {
 }
 
 # Generate preview based on selected git object type
+# Uses diff pager (delta > bat > cat) for improved diff readability
 _git_preview() {
   local repo_path="$1"
   local line="$2"
@@ -143,12 +167,30 @@ _git_preview() {
   local content="${line#*:}"
   content="${content#"${content%%[![:space:]]*}"}"
   
+  # Get the diff pager command
+  local pager_name=$(_get_diff_pager_name)
+  local pager_cmd=$(_get_diff_pager)
+  
+  # Determine git color settings based on pager
+  # delta: use no color (delta does its own coloring)
+  # bat/cat: use git's color output
+  local git_color="always"
+  if [[ "$pager_name" == "delta" ]]; then
+    git_color="never"
+  fi
+  
   case "$type" in
     commit)
       # Extract commit hash (first word after prefix)
       local hash=$(echo "$content" | awk '{print $1}')
-      git -C "$repo_path" show --color=always --stat "$hash" 2>/dev/null || \
-        echo "Error: Could not show commit $hash"
+      if [[ "$pager_name" == "cat" ]]; then
+        git -C "$repo_path" show --color=always --stat "$hash" 2>/dev/null || \
+          echo "Error: Could not show commit $hash"
+      else
+        git -C "$repo_path" show --color=$git_color --stat "$hash" 2>/dev/null | \
+          eval "$pager_cmd" 2>/dev/null || \
+          echo "Error: Could not show commit $hash"
+      fi
       ;;
     branch)
       # Extract branch name (remove leading * and spaces)
@@ -161,20 +203,38 @@ _git_preview() {
     tag)
       # Extract tag name (first word)
       local tag=$(echo "$content" | awk '{print $1}')
-      git -C "$repo_path" show --color=always --stat "$tag" 2>/dev/null || \
-        echo "Error: Could not show tag $tag"
+      if [[ "$pager_name" == "cat" ]]; then
+        git -C "$repo_path" show --color=always --stat "$tag" 2>/dev/null || \
+          echo "Error: Could not show tag $tag"
+      else
+        git -C "$repo_path" show --color=$git_color --stat "$tag" 2>/dev/null | \
+          eval "$pager_cmd" 2>/dev/null || \
+          echo "Error: Could not show tag $tag"
+      fi
       ;;
     reflog)
       # Extract reflog entry (first word like HEAD@{0})
       local entry=$(echo "$content" | awk '{print $1}')
-      git -C "$repo_path" show --color=always --stat "$entry" 2>/dev/null || \
-        echo "Error: Could not show reflog entry $entry"
+      if [[ "$pager_name" == "cat" ]]; then
+        git -C "$repo_path" show --color=always --stat "$entry" 2>/dev/null || \
+          echo "Error: Could not show reflog entry $entry"
+      else
+        git -C "$repo_path" show --color=$git_color --stat "$entry" 2>/dev/null | \
+          eval "$pager_cmd" 2>/dev/null || \
+          echo "Error: Could not show reflog entry $entry"
+      fi
       ;;
     stash)
       # Extract stash id (like stash@{0})
       local stash=$(echo "$content" | grep -o 'stash@{[0-9]*}' | head -n1)
-      git -C "$repo_path" stash show -p --color=always "$stash" 2>/dev/null || \
-        echo "Error: Could not show stash $stash"
+      if [[ "$pager_name" == "cat" ]]; then
+        git -C "$repo_path" stash show -p --color=always "$stash" 2>/dev/null || \
+          echo "Error: Could not show stash $stash"
+      else
+        git -C "$repo_path" stash show -p --color=$git_color "$stash" 2>/dev/null | \
+          eval "$pager_cmd" 2>/dev/null || \
+          echo "Error: Could not show stash $stash"
+      fi
       ;;
     *)
       echo "Unknown type: $type"
