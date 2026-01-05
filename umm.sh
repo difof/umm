@@ -184,10 +184,12 @@ _git_preview() {
       # Extract commit hash (first word after prefix)
       local hash=$(echo "$content" | awk '{print $1}')
       if [[ "$pager_name" == "cat" ]]; then
+        # cat: show with --stat for compact view
         git -C "$repo_path" show --color=always --stat "$hash" 2>/dev/null || \
           echo "Error: Could not show commit $hash"
       else
-        git -C "$repo_path" show --color=$git_color --stat "$hash" 2>/dev/null | \
+        # delta/bat: show full diff (no --stat) for proper syntax highlighting
+        git -C "$repo_path" show --color=$git_color "$hash" 2>/dev/null | \
           eval "$pager_cmd" 2>/dev/null || \
           echo "Error: Could not show commit $hash"
       fi
@@ -204,10 +206,12 @@ _git_preview() {
       # Extract tag name (first word)
       local tag=$(echo "$content" | awk '{print $1}')
       if [[ "$pager_name" == "cat" ]]; then
+        # cat: show with --stat for compact view
         git -C "$repo_path" show --color=always --stat "$tag" 2>/dev/null || \
           echo "Error: Could not show tag $tag"
       else
-        git -C "$repo_path" show --color=$git_color --stat "$tag" 2>/dev/null | \
+        # delta/bat: show full diff (no --stat) for proper syntax highlighting
+        git -C "$repo_path" show --color=$git_color "$tag" 2>/dev/null | \
           eval "$pager_cmd" 2>/dev/null || \
           echo "Error: Could not show tag $tag"
       fi
@@ -216,10 +220,12 @@ _git_preview() {
       # Extract reflog entry (first word like HEAD@{0})
       local entry=$(echo "$content" | awk '{print $1}')
       if [[ "$pager_name" == "cat" ]]; then
+        # cat: show with --stat for compact view
         git -C "$repo_path" show --color=always --stat "$entry" 2>/dev/null || \
           echo "Error: Could not show reflog entry $entry"
       else
-        git -C "$repo_path" show --color=$git_color --stat "$entry" 2>/dev/null | \
+        # delta/bat: show full diff (no --stat) for proper syntax highlighting
+        git -C "$repo_path" show --color=$git_color "$entry" 2>/dev/null | \
           eval "$pager_cmd" 2>/dev/null || \
           echo "Error: Could not show reflog entry $entry"
       fi
@@ -227,6 +233,7 @@ _git_preview() {
     stash)
       # Extract stash id (like stash@{0})
       local stash=$(echo "$content" | grep -o 'stash@{[0-9]*}' | head -n1)
+      # Stash always shows full diff
       if [[ "$pager_name" == "cat" ]]; then
         git -C "$repo_path" stash show -p --color=always "$stash" 2>/dev/null || \
           echo "Error: Could not show stash $stash"
@@ -273,6 +280,9 @@ PREVIEW_EOF
     return 1
   fi
   
+  # Get pager info for header
+  local pager_name=$(_get_diff_pager_name)
+  
   # Build fzf options
   local fzf_opts=(
     --ansi
@@ -285,7 +295,7 @@ PREVIEW_EOF
     --preview="$preview_script {}"
     --preview-window="top:60%"
     --bind "ctrl-/:toggle-preview"
-    --header="COMMITS | BRANCHES | TAGS | REFLOG | STASHES"
+    --header="COMMITS | BRANCHES | TAGS | REFLOG | STASHES | Pager: $pager_name"
   )
   
   # Run fzf
