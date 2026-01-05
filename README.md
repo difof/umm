@@ -24,8 +24,6 @@ $ umm
 # opens at exact line
 ```
 
----
-
 ## Installation
 
 **Required:**
@@ -61,8 +59,6 @@ echo 'source /path/to/umm/umm.sh' >> ~/.bashrc
 source ~/.bashrc
 ```
 
----
-
 ## Usage
 
 ```bash
@@ -90,8 +86,6 @@ export EDITOR=nvim          # Add to ~/.bashrc or ~/.zshrc
 ```
 
 **Supported editors:** vim, vi, nvim, nano, micro, emacs, code (VSCode), cursor, subl (Sublime Text), and more.
-
----
 
 ## How it works
 
@@ -153,8 +147,6 @@ brew install bat
 umm -d 3  # Limit depth
 ```
 
----
-
 ## Contributing
 
 1. Fork and create branch: `git checkout -b feat/name`
@@ -163,8 +155,6 @@ umm -d 3  # Limit depth
 4. Push and create PR
 
 **Commit prefixes:** `feat:` `fix:` `docs:` `refactor:` `perf:`
-
----
 
 ## Acknowledgments
 
