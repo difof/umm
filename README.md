@@ -1,6 +1,6 @@
 # umm - Ultimate Multi-file Matcher
 
-Interactive search tool for both file content and git objects, powered by **ripgrep**, **fzf**, and optional preview tools like **bat**/**delta**.
+Interactive search tool for both file content and [Git](https://github.com/git/git) objects, powered by **[ripgrep](https://github.com/BurntSushi/ripgrep)**, **[fzf](https://github.com/junegunn/fzf)**, and optional preview tools like **[bat](https://github.com/sharkdp/bat)**/**[delta](https://github.com/dandavison/delta)**.
 
 **Compatible with:** bash, zsh
 
@@ -10,8 +10,8 @@ Interactive search tool for both file content and git objects, powered by **ripg
 - **Preview** - See file contents with syntax highlighting
 - **Jump to line** - Opens your editor at the exact match
 - **Multi-select** - Open multiple files at once
-- **Git mode** - Search commits, branches, tags, reflog, and stashes in one view
-- **Diff pager fallback** - Uses `delta`, then `bat`, then plain output for git previews
+- **[Git](https://github.com/git/git) mode** - Search commits, branches, tags, reflog, and stashes in one view
+- **Diff pager fallback** - Uses [`delta`](https://github.com/dandavison/delta), then [`bat`](https://github.com/sharkdp/bat), then [`cat`](https://www.gnu.org/software/coreutils/)
 
 ```bash
 # Old way
@@ -29,16 +29,16 @@ $ umm
 ## Installation
 
 **Required:**
-- `ripgrep` - Fast file search
-- `fzf` - Interactive fuzzy finder
+- [`ripgrep` (`rg`)](https://github.com/BurntSushi/ripgrep) - Fast file search
+- [`fzf`](https://github.com/junegunn/fzf) - Interactive fuzzy finder
 - A text editor (set via `$EDITOR`, defaults to `nvim`)
 
-**Required for git mode:**
-- `git` - Repository search and previews
+**Required for [Git](https://github.com/git/git) mode:**
+- [`git`](https://github.com/git/git) - Repository search and previews
 
 **Recommended:**
-- `bat` - Syntax highlighting in preview (falls back to `sed` if not available)
-- `delta` - Best diff preview experience in git mode (`bat`/plain fallback if unavailable)
+- [`delta`](https://github.com/dandavison/delta) - Recommended for the best [Git](https://github.com/git/git) diff preview (`delta` -> `bat` -> `cat`)
+- [`bat`](https://github.com/sharkdp/bat) - Syntax highlighting in file previews (falls back to [`sed`](https://www.gnu.org/software/sed/) + line numbers if unavailable)
 
 ```bash
 # macOS
@@ -54,7 +54,7 @@ pacman -S ripgrep fzf bat neovim
 **Install:**
 ```bash
 # Clone
-git clone https://github.com/yourusername/umm.git
+git clone https://github.com/difof/umm.git
 
 # For zsh (includes tab completions)
 echo 'source /path/to/umm/umm.sh' >> ~/.zshrc
@@ -84,7 +84,7 @@ umm --git ~/projects/repo          # Git search in specific repository
 
 ### Default Behavior
 
-**umm uses ripgrep's smart defaults:**
+**umm uses [ripgrep](https://github.com/BurntSushi/ripgrep)'s smart defaults:**
 
 - **Respects `.gitignore`** - Automatically excludes files/directories listed in `.gitignore`
 - **Excludes `.git` directory** - Never searches inside `.git` by default
@@ -98,7 +98,7 @@ To search **everything** (override all defaults), use the `--all` flag.
 - `-p, --pattern REGEXP` - Initial search pattern
 - `-e, --exclude PATTERN` - Exclude file/directory pattern (can be used multiple times)
 - `-a, --all` - Search all files including .gitignore'd and hidden files
-- `-g, --git` - Search git objects in a unified list
+- `-g, --git` - Search [Git](https://github.com/git/git) objects in a unified list
 - `-n, --noui` - Non-interactive mode, open first match directly
 - `-d, --max-depth N` - Maximum search depth
 - `-h, --help` - Show help
@@ -106,7 +106,7 @@ To search **everything** (override all defaults), use the `--all` flag.
 
 ### Git Mode
 
-When `-g/--git` is enabled, umm shows a single searchable list with type-prefixed entries:
+When `-g/--git` is enabled, umm shows a single searchable list with [Git](https://github.com/git/git) type-prefixed entries:
 
 - `commit:` recent commit history (up to 1000 entries)
 - `branch:` local and remote branches
@@ -116,9 +116,9 @@ When `-g/--git` is enabled, umm shows a single searchable list with type-prefixe
 
 Preview is context-aware by type and uses this diff rendering fallback chain:
 
-- `delta` (preferred)
-- `bat` (`--style=numbers,changes --language=diff`)
-- plain git output
+- [`delta`](https://github.com/dandavison/delta) (recommended)
+- [`bat`](https://github.com/sharkdp/bat) (`--style=numbers,changes --language=diff`)
+- [`cat`](https://www.gnu.org/software/coreutils/) (plain output fallback)
 
 Selection output strips the type prefix, so results are easy to pipe:
 
@@ -129,7 +129,7 @@ umm -g -p "branch:" | sed 's/^[* ]*//' | xargs git checkout
 
 ### Keybindings
 
-Common (file mode and git mode):
+Common (file mode and [Git](https://github.com/git/git) mode):
 
 - `Shift+Up` / `Shift+Down` - Scroll preview one line up/down
 - `Alt+U` / `Alt+D` - Scroll preview half-page up/down
@@ -153,7 +153,7 @@ umm -e "test\ dir"                 # Escape spaces in patterns
 
 ### Search All Files
 
-By default, umm respects `.gitignore` and excludes hidden files (via ripgrep's defaults). Use `--all` to override:
+By default, umm respects `.gitignore` and excludes hidden files (via [ripgrep](https://github.com/BurntSushi/ripgrep)'s defaults). Use `--all` to override:
 
 ```bash
 umm -a                             # Search everything (ignore .gitignore, include hidden)
@@ -182,19 +182,19 @@ export EDITOR=nvim          # Add to ~/.bashrc or ~/.zshrc
 
 ### Live reload mechanism
 
-The key to instant updates is fzf's `--disabled` mode:
+The key to instant updates is [fzf](https://github.com/junegunn/fzf)'s `--disabled` mode:
 
 ```zsh
 fzf --disabled \
   --bind "change:reload:sleep 0.05; rg {q} $root"
 ```
 
-- `--disabled` - fzf delegates ALL search to ripgrep (no local filtering)
-- `change:reload:` - Every keystroke triggers new ripgrep search
+- `--disabled` - [fzf](https://github.com/junegunn/fzf) delegates ALL search to [ripgrep](https://github.com/BurntSushi/ripgrep) (no local filtering)
+- `change:reload:` - Every keystroke triggers new [ripgrep](https://github.com/BurntSushi/ripgrep) search
 - `sleep 0.05` - Debounce to prevent system overload
-- `{q}` - Current query from fzf input
+- `{q}` - Current query from [fzf](https://github.com/junegunn/fzf) input
 
-Without `--disabled`, fzf would only filter pre-loaded results. This enables true live search.
+Without `--disabled`, [fzf](https://github.com/junegunn/fzf) would only filter pre-loaded results. This enables true live search.
 
 ### Preview system
 
@@ -209,13 +209,13 @@ bat --color=always \
 - `{2}` = line number
 - `--line-range {2}::15` = show line with 15 lines of context
 
-Preview updates as you navigate because fzf re-runs the command with new values.
+Preview updates as you navigate because [fzf](https://github.com/junegunn/fzf) re-runs the command with new values.
 
 ### Performance
 
 1. **Debouncing** - Wait 50ms between keystrokes
-2. **Binary skipping** - ripgrep skips binary files automatically
-3. **Gitignore respect** - ripgrep respects `.gitignore` by default (use `--all` to override)
+2. **Binary skipping** - [ripgrep](https://github.com/BurntSushi/ripgrep) skips binary files automatically
+3. **Gitignore respect** - [ripgrep](https://github.com/BurntSushi/ripgrep) respects `.gitignore` by default (use `--all` to override)
 4. **Hidden files excluded** - Hidden files/directories excluded by default (use `--all` to include)
 5. **Depth limiting** - Optional `--max-depth` flag
 6. **Smart case** - Case-insensitive unless uppercase in query
@@ -253,3 +253,4 @@ umm -d 3  # Limit depth
 - [ripgrep](https://github.com/BurntSushi/ripgrep) - @BurntSushi
 - [fzf](https://github.com/junegunn/fzf) - @junegunn
 - [bat](https://github.com/sharkdp/bat) - @sharkdp
+- [delta](https://github.com/dandavison/delta) - @dandavison
