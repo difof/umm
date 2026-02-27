@@ -110,6 +110,18 @@ _build_editor_args() {
   printf '%s\n' "${args[@]}"
 }
 
+# Join arguments as a shell-escaped string
+_join_escaped() {
+  local output=""
+  local arg
+
+  for arg in "$@"; do
+    output+="$(printf '%q ' "$arg")"
+  done
+
+  printf '%s' "${output% }"
+}
+
 # Validate if a path is within a git repository
 _git_validate_repo() {
   local repo_path="$1"
@@ -133,6 +145,7 @@ _git_validate_repo() {
 _git_aggregate_data() {
   local repo_path="$1"
   local pattern="$2"
+  local include_filenames="${3:-true}"
   
   # Collect commits (limit to 1000 for performance)
   git -C "$repo_path" log --oneline --all --color=always -n 1000 2>/dev/null | \
@@ -153,6 +166,12 @@ _git_aggregate_data() {
   # Collect stashes
   git -C "$repo_path" stash list 2>/dev/null | \
     sed 's/^/stash:   /' || true
+
+  # Collect tracked files (optional)
+  if [[ "$include_filenames" == true ]]; then
+    git -C "$repo_path" ls-files 2>/dev/null | \
+      sed 's/^/file:    /' || true
+  fi
 }
 
 # Generate preview based on selected git object type
@@ -243,6 +262,21 @@ _git_preview() {
           echo "Error: Could not show stash $stash"
       fi
       ;;
+    file)
+      # file path from repository
+      local file="$content"
+      local abs_file="$repo_path/$file"
+      echo "File: $file"
+      echo "----------------------------------------"
+      if [[ ! -f "$abs_file" ]]; then
+        echo "Error: Could not preview file $file"
+      elif command -v bat >/dev/null 2>&1; then
+        bat --color=always --style=numbers,header --line-range :200 "$abs_file" 2>/dev/null || \
+          sed -n '1,200p' "$abs_file" 2>/dev/null
+      else
+        sed -n '1,200p' "$abs_file" 2>/dev/null
+      fi
+      ;;
     *)
       echo "Unknown type: $type"
       ;;
@@ -253,6 +287,7 @@ _git_preview() {
 _git_search() {
   local repo_path="$1"
   local pattern="$2"
+  local include_filenames="$3"
   
   # Get absolute path for repo
   repo_path=$(cd "$repo_path" && pwd)
@@ -272,7 +307,7 @@ PREVIEW_EOF
   export UMM_REPO_PATH="$repo_path"
   
   # Aggregate git data
-  local git_data=$(_git_aggregate_data "$repo_path" "$pattern")
+  local git_data=$(_git_aggregate_data "$repo_path" "$pattern" "$include_filenames")
   
   if [[ -z "$git_data" ]]; then
     _error "No git objects found in repository"
@@ -282,6 +317,10 @@ PREVIEW_EOF
   
   # Get pager info for header
   local pager_name=$(_get_diff_pager_name)
+  local header_types="COMMITS | BRANCHES | TAGS | REFLOG | STASHES"
+  if [[ "$include_filenames" == true ]]; then
+    header_types+=" | FILES"
+  fi
   
   # Build fzf options
   local fzf_opts=(
@@ -301,7 +340,7 @@ PREVIEW_EOF
     --bind "alt-d:preview-half-page-down"
     --bind "ctrl-u:half-page-up"
     --bind "ctrl-d:half-page-down"
-    --header="COMMITS | BRANCHES | TAGS | REFLOG | STASHES | Pager: $pager_name"
+    --header="$header_types | Pager: $pager_name"
   )
   
   # Run fzf
@@ -334,6 +373,7 @@ umm() {
   local max_depth=""
   local -a exclude_patterns=()
   local scan_all=false
+  local search_filenames=true
   local positional_set=false
   local git_mode=false
   
@@ -353,9 +393,10 @@ OPTIONS:
                          Can be used multiple times
                          Examples: '*.log', 'test/', '**/tmp/**'
   -a, --all              Search all files (ignore .gitignore, include hidden)
+  --no-filename          Disable filename/path matching
   -g, --git              Search git repository (commits, branches, tags, etc.)
-                         Combines all git objects into one searchable list
-                         Use prefixes to filter: commit:, branch:, tag:, etc.
+                          Combines all git objects into one searchable list
+                          Use prefixes to filter: commit:, branch:, tag:, etc.
   -n, --noui             Non-interactive mode, open first match
   -d, --max-depth N      Maximum search depth
   -h, --help             Show this help
@@ -375,6 +416,7 @@ EXAMPLES:
   umm -p "function" ~/projects       # Search with initial pattern
   umm -e "*.log" -e "test"           # Exclude log files and test directories
   umm -a                             # Search all files (ignore .gitignore)
+  umm --no-filename -p "TODO"        # Search content only (no path matching)
   umm -p "TODO" -n ~/src             # Open first match directly
   
   Git Mode:
@@ -419,6 +461,10 @@ EOF
         ;;
       --all|-a)
         scan_all=true
+        shift
+        ;;
+      --no-filename)
+        search_filenames=false
         shift
         ;;
       --git|-g)
@@ -478,7 +524,7 @@ EOF
     fi
     
     # Run git search
-    _git_search "$root" "$pattern"
+    _git_search "$root" "$pattern" "$search_filenames"
     return $?
   fi
   
@@ -501,22 +547,37 @@ EOF
   fi
   
   [[ -n "$max_depth" ]] && rg_opts+=(--max-depth "$max_depth")
+
+  # Build ripgrep file listing options
+  local rg_file_opts=()
+  [[ -n "$max_depth" ]] && rg_file_opts+=(--max-depth "$max_depth")
   
   # Add exclude patterns
   for exclude_pattern in "${exclude_patterns[@]}"; do
     rg_opts+=(--glob "!$exclude_pattern")
+    rg_file_opts+=(--glob "!$exclude_pattern")
   done
   
   # Add --all flag options
   if [[ "$scan_all" == true ]]; then
     rg_opts+=(--no-ignore --hidden)
+    rg_file_opts+=(--no-ignore --hidden)
   fi
   
   local selected
   
   if [[ "$noui" == true ]]; then
     # Non-interactive mode
-    selected=$(rg "${rg_opts[@]}" "$pattern" "$root" 2>/dev/null | head -n1)
+    if [[ "$search_filenames" == true ]]; then
+      selected=$({
+        rg "${rg_opts[@]}" "$pattern" "$root" 2>/dev/null
+        rg --files "${rg_file_opts[@]}" "$root" 2>/dev/null | \
+          rg --smart-case "$pattern" 2>/dev/null | \
+          sed 's/$/:1:[file]/'
+      } | head -n1)
+    else
+      selected=$(rg "${rg_opts[@]}" "$pattern" "$root" 2>/dev/null | head -n1)
+    fi
     
     if [[ -z "$selected" ]]; then
       _error "No matches found for pattern: ${C_YELLOW}$pattern${C_RESET}"
@@ -527,7 +588,23 @@ EOF
   else
     # Interactive mode
     local root_escaped=$(printf %q "$root")
-    local rg_command="rg ${rg_opts[*]} {q} $root_escaped 2>/dev/null || true"
+    local rg_opts_escaped=$(_join_escaped "${rg_opts[@]}")
+    local rg_file_opts_escaped=$(_join_escaped "${rg_file_opts[@]}")
+    local pattern_escaped=$(printf %q "$pattern")
+
+    local rg_content_command="rg $rg_opts_escaped {q} $root_escaped 2>/dev/null || true"
+    local default_content_command="rg $rg_opts_escaped $pattern_escaped $root_escaped 2>/dev/null || true"
+
+    local rg_command="$rg_content_command"
+    local default_command="$default_content_command"
+
+    if [[ "$search_filenames" == true ]]; then
+      local rg_files_base="rg --files $rg_file_opts_escaped $root_escaped 2>/dev/null"
+      local rg_files_command="$rg_files_base | rg --smart-case {q} 2>/dev/null | sed 's/\$/:1:[file]/' || true"
+      local default_files_command="$rg_files_base | rg --smart-case $pattern_escaped 2>/dev/null | sed 's/\$/:1:[file]/' || true"
+      rg_command="{ $rg_content_command; $rg_files_command; }"
+      default_command="{ $default_content_command; $default_files_command; }"
+    fi
     
     # Build preview command
     local preview_cmd
@@ -560,7 +637,7 @@ EOF
     )
     
     # Run fzf
-    selected=$(FZF_DEFAULT_COMMAND="rg ${rg_opts[*]} $(printf %q "$pattern") $root_escaped 2>/dev/null || true" \
+    selected=$(FZF_DEFAULT_COMMAND="$default_command" \
       fzf "${fzf_opts[@]}")
   fi
   
@@ -649,6 +726,7 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
       '(-p --pattern)'{-p,--pattern}'[Search pattern]:pattern:'
       '*'{-e,--exclude}'[Exclude pattern (gitignore-style glob)]:pattern:'
       '(-a --all)'{-a,--all}'[Search all files (ignore .gitignore, include hidden)]'
+      '(--no-filename)'--no-filename'[Disable filename/path matching]'
       '(-g --git)'{-g,--git}'[Search git repository (commits, branches, tags, etc.)]'
       '(-n --noui)'{-n,--noui}'[Non-interactive mode]'
       '(-d --max-depth)'{-d,--max-depth}'[Maximum depth]:depth:'
