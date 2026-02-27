@@ -103,6 +103,7 @@ To search **everything** (override all defaults), use the `--all` flag.
 - `-p, --pattern REGEXP` - Initial search pattern
 - `-e, --exclude PATTERN` - Exclude file/directory pattern (can be used multiple times)
 - `-a, --all` - Search all files including .gitignore'd and hidden files
+- `--no-filename` - Disable filename/path matching
 - `-g, --git` - Search [Git](https://github.com/git/git) objects in a unified list
 - `-n, --noui` - Non-interactive mode, open first match directly
 - `-d, --max-depth N` - Maximum search depth
