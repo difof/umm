@@ -120,6 +120,7 @@ When `-g/--git` is enabled, umm shows a single searchable list with [Git](https:
 - `stash:` stash entries
 
 - `file:` tracked repository files (enabled by default; disable with `--no-filename`)
+
 Preview is context-aware by type and uses this diff rendering fallback chain:
 
 - [`delta`](https://github.com/dandavison/delta) (recommended)
