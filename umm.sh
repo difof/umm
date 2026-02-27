@@ -295,6 +295,12 @@ PREVIEW_EOF
     --preview="$preview_script {}"
     --preview-window="top:60%"
     --bind "ctrl-/:toggle-preview"
+    --bind "shift-up:preview-up"
+    --bind "shift-down:preview-down"
+    --bind "alt-u:preview-half-page-up"
+    --bind "alt-d:preview-half-page-down"
+    --bind "ctrl-u:half-page-up"
+    --bind "ctrl-d:half-page-down"
     --header="COMMITS | BRANCHES | TAGS | REFLOG | STASHES | Pager: $pager_name"
   )
   
@@ -543,6 +549,12 @@ EOF
       --preview-window="top:60%"
       --bind "change:reload:sleep 0.05; $rg_command"
       --bind "start:reload:$rg_command"
+      --bind "shift-up:preview-up"
+      --bind "shift-down:preview-down"
+      --bind "alt-u:preview-half-page-up"
+      --bind "alt-d:preview-half-page-down"
+      --bind "ctrl-u:half-page-up"
+      --bind "ctrl-d:half-page-down"
       --multi
       --bind "tab:toggle+down,shift-tab:toggle+up"
     )
