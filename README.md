@@ -73,6 +73,7 @@ umm                                # Interactive search in current directory
 umm ~/projects                     # Search in specific directory
 umm -p "function"                  # Start with pattern
 umm -p "TODO" ~/projects           # Search with pattern in directory
+umm --no-filename -p "TODO"        # Search content only (disable path matching)
 umm -e "*.log" -e "test"           # Exclude patterns (gitignore-style globs)
 umm -a                             # Search all files (ignore .gitignore, include hidden)
 umm -p "error" -n                  # Open first match (no UI)
