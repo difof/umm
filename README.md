@@ -138,6 +138,8 @@ umm -g -p "branch:" | sed 's/^[* ]*//' | xargs git checkout
 
 Common (file mode and [Git](https://github.com/git/git) mode):
 
+- `Ctrl+G` / `Ctrl+B` - Jump to bottom/top of result list
+- `Alt+G` / `Alt+B` - Jump to top/bottom of preview
 - `Shift+Up` / `Shift+Down` - Scroll preview one line up/down
 - `Alt+U` / `Alt+D` - Scroll preview half-page up/down
 - `Ctrl+U` / `Ctrl+D` - Scroll result list half-page up/down
