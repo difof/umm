@@ -91,6 +91,7 @@ umm --git ~/projects/repo          # Git search in specific repository
 - **Searches content and paths** - Query matches file contents and filenames/paths by default
 - **Disable path matching with `--no-filename`** - Restrict search to content (or git objects) only
 
+- **Respects `.gitignore`** - Automatically excludes files/directories listed in `.gitignore`
 - **Excludes `.git` directory** - Never searches inside `.git` by default
 - **Excludes hidden files** - Files/directories starting with `.` are skipped (except `.gitignore` itself)
 - **Skips binary files** - Binary files are automatically detected and excluded
