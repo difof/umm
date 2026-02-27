@@ -1,6 +1,6 @@
 # umm - Ultimate Multi-file Matcher
 
-Interactive search tool combining **ripgrep**, **fzf**, and **bat** for fast code search with live preview.
+Interactive search tool for both file content and git objects, powered by **ripgrep**, **fzf**, and optional preview tools like **bat**/**delta**.
 
 **Compatible with:** bash, zsh
 
@@ -10,6 +10,8 @@ Interactive search tool combining **ripgrep**, **fzf**, and **bat** for fast cod
 - **Preview** - See file contents with syntax highlighting
 - **Jump to line** - Opens your editor at the exact match
 - **Multi-select** - Open multiple files at once
+- **Git mode** - Search commits, branches, tags, reflog, and stashes in one view
+- **Diff pager fallback** - Uses `delta`, then `bat`, then plain output for git previews
 
 ```bash
 # Old way
@@ -31,8 +33,12 @@ $ umm
 - `fzf` - Interactive fuzzy finder
 - A text editor (set via `$EDITOR`, defaults to `nvim`)
 
+**Required for git mode:**
+- `git` - Repository search and previews
+
 **Recommended:**
 - `bat` - Syntax highlighting in preview (falls back to `sed` if not available)
+- `delta` - Best diff preview experience in git mode (`bat`/plain fallback if unavailable)
 
 ```bash
 # macOS
@@ -70,6 +76,10 @@ umm -e "*.log" -e "test"           # Exclude patterns (gitignore-style globs)
 umm -a                             # Search all files (ignore .gitignore, include hidden)
 umm -p "error" -n                  # Open first match (no UI)
 umm -d 3                           # Limit search depth
+
+umm -g                             # Search git objects (commits/branches/tags/reflog/stashes)
+umm -g -p "fix"                    # Start git mode with pattern
+umm --git ~/projects/repo          # Git search in specific repository
 ```
 
 ### Default Behavior
@@ -88,10 +98,47 @@ To search **everything** (override all defaults), use the `--all` flag.
 - `-p, --pattern REGEXP` - Initial search pattern
 - `-e, --exclude PATTERN` - Exclude file/directory pattern (can be used multiple times)
 - `-a, --all` - Search all files including .gitignore'd and hidden files
+- `-g, --git` - Search git objects in a unified list
 - `-n, --noui` - Non-interactive mode, open first match directly
 - `-d, --max-depth N` - Maximum search depth
 - `-h, --help` - Show help
 - `-v, --version` - Show version
+
+### Git Mode
+
+When `-g/--git` is enabled, umm shows a single searchable list with type-prefixed entries:
+
+- `commit:` recent commit history (up to 1000 entries)
+- `branch:` local and remote branches
+- `tag:` tags with subjects
+- `reflog:` recent reflog entries (up to 100)
+- `stash:` stash entries
+
+Preview is context-aware by type and uses this diff rendering fallback chain:
+
+- `delta` (preferred)
+- `bat` (`--style=numbers,changes --language=diff`)
+- plain git output
+
+Selection output strips the type prefix, so results are easy to pipe:
+
+```bash
+umm -g -p "commit:" | cut -d' ' -f1 | xargs git show
+umm -g -p "branch:" | sed 's/^[* ]*//' | xargs git checkout
+```
+
+### Keybindings
+
+Common (file mode and git mode):
+
+- `Shift+Up` / `Shift+Down` - Scroll preview one line up/down
+- `Alt+U` / `Alt+D` - Scroll preview half-page up/down
+- `Ctrl+U` / `Ctrl+D` - Scroll result list half-page up/down
+
+Mode-specific:
+
+- File mode: `Tab` / `Shift+Tab` toggle multi-select and move
+- Git mode: `Ctrl+/` toggle preview pane
 
 ### Exclude Patterns
 
@@ -206,4 +253,3 @@ umm -d 3  # Limit depth
 - [ripgrep](https://github.com/BurntSushi/ripgrep) - @BurntSushi
 - [fzf](https://github.com/junegunn/fzf) - @junegunn
 - [bat](https://github.com/sharkdp/bat) - @sharkdp
-
