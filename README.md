@@ -7,6 +7,7 @@ Interactive search tool for both file content and [Git](https://github.com/git/g
 ## What it does
 
 - **Live search** - Results update as you type
+- **Path + content matching** - Searches filenames/paths and file contents by default
 - **Preview** - See file contents with syntax highlighting
 - **Jump to line** - Opens your editor at the exact match
 - **Multi-select** - Open multiple files at once
