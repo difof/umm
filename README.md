@@ -88,7 +88,6 @@ umm --git ~/projects/repo          # Git search in specific repository
 
 **umm uses [ripgrep](https://github.com/BurntSushi/ripgrep)'s smart defaults:**
 
-- **Respects `.gitignore`** - Automatically excludes files/directories listed in `.gitignore`
 - **Searches content and paths** - Query matches file contents and filenames/paths by default
 - **Disable path matching with `--no-filename`** - Restrict search to content (or git objects) only
 
