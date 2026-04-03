@@ -122,6 +122,26 @@ _join_escaped() {
   printf '%s' "${output% }"
 }
 
+# Open a single file in editor (optionally at line number)
+_open_single_file() {
+  local editor="$1"
+  local file="$2"
+  local linenum="$3"
+
+  if [[ ! -f "$file" ]]; then
+    _error "File does not exist: $file"
+    return 1
+  fi
+
+  local -a editor_args
+  while IFS= read -r arg; do
+    editor_args+=("$arg")
+  done < <(_build_editor_args "$editor" "$file" "$linenum")
+
+  _success "Opening ${C_CYAN}$file${C_RESET} in $editor"
+  "$editor" "${editor_args[@]}"
+}
+
 # Validate if a path is within a git repository
 _git_validate_repo() {
   local repo_path="$1"
@@ -283,11 +303,66 @@ _git_preview() {
   esac
 }
 
+# Print detailed git output for selected object
+_git_print_details() {
+  local repo_path="$1"
+  local line="$2"
+
+  local type="${line%%:*}"
+  local content="${line#*:}"
+  content="${content#"${content%%[![:space:]]*}"}"
+
+  local git_color="always"
+  [[ -t 1 ]] || git_color="never"
+
+  case "$type" in
+    commit)
+      local hash=$(echo "$content" | awk '{print $1}')
+      git -C "$repo_path" show --color=$git_color "$hash" 2>/dev/null || \
+        echo "Error: Could not show commit $hash"
+      ;;
+    branch)
+      local branch=$(echo "$content" | sed 's/^[* ]*//' | awk '{print $1}')
+      echo "Branch: $branch"
+      echo "----------------------------------------"
+      git -C "$repo_path" log --graph --decorate --oneline --color=$git_color -30 "$branch" 2>/dev/null || \
+        echo "Error: Could not show branch $branch"
+      ;;
+    tag)
+      local tag=$(echo "$content" | awk '{print $1}')
+      git -C "$repo_path" show --color=$git_color "$tag" 2>/dev/null || \
+        echo "Error: Could not show tag $tag"
+      ;;
+    reflog)
+      local entry=$(echo "$content" | awk '{print $1}')
+      git -C "$repo_path" show --color=$git_color "$entry" 2>/dev/null || \
+        echo "Error: Could not show reflog entry $entry"
+      ;;
+    stash)
+      local stash=$(echo "$content" | grep -o 'stash@{[0-9]*}' | head -n1)
+      git -C "$repo_path" stash show -p --color=$git_color "$stash" 2>/dev/null || \
+        echo "Error: Could not show stash $stash"
+      ;;
+    file)
+      local file="$content"
+      echo "File: $file"
+      echo "----------------------------------------"
+      git -C "$repo_path" log --follow --decorate --oneline --color=$git_color -30 -- "$file" 2>/dev/null || \
+        echo "Error: Could not show history for $file"
+      ;;
+    *)
+      echo "Unknown type: $type"
+      ;;
+  esac
+}
+
 # Main git search function
 _git_search() {
   local repo_path="$1"
   local pattern="$2"
   local include_filenames="$3"
+  local git_details="$4"
+  local editor="$5"
   
   # Get absolute path for repo
   repo_path=$(cd "$repo_path" && pwd)
@@ -327,6 +402,7 @@ PREVIEW_EOF
     --ansi
     --no-sort
     --tiebreak=index
+    --expect="ctrl-o"
     --query="$pattern"
     --delimiter=':'
     --prompt="> Git: "
@@ -360,10 +436,37 @@ PREVIEW_EOF
     _info "Search cancelled"
     return 0
   fi
-  
-  # Strip prefix and output
+
+  # Parse expected key (if any)
+  local key=""
+  if [[ "$selected" == *$'\n'* ]]; then
+    key="${selected%%$'\n'*}"
+    selected="${selected#*$'\n'}"
+  fi
+
+  if [[ -z "$selected" ]]; then
+    _info "Search cancelled"
+    return 0
+  fi
+
+  local type="${selected%%:*}"
   local content="${selected#*:}"
   content="${content#"${content%%[![:space:]]*}"}"
+
+  if [[ "$key" == "ctrl-o" ]]; then
+    if [[ "$type" == "file" ]]; then
+      _open_single_file "$editor" "$repo_path/$content" ""
+      return $?
+    fi
+    _warn "Ctrl+O opens only file entries in git mode"
+  fi
+
+  if [[ "$git_details" == true ]]; then
+    _git_print_details "$repo_path" "$selected"
+    return $?
+  fi
+
+  # Strip prefix and output
   echo "$content"
 }
 
@@ -380,6 +483,7 @@ umm() {
   local search_filenames=true
   local positional_set=false
   local git_mode=false
+  local git_details=false
   
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -399,8 +503,9 @@ OPTIONS:
   -a, --all              Search all files (ignore .gitignore, include hidden)
   --no-filename          Disable filename/path matching
   -g, --git              Search git repository (commits, branches, tags, etc.)
-                          Combines all git objects into one searchable list
-                          Use prefixes to filter: commit:, branch:, tag:, etc.
+                           Combines all git objects into one searchable list
+                           Use prefixes to filter: commit:, branch:, tag:, etc.
+  --git-details          In git mode, print detailed output for selection
   -n, --noui             Non-interactive mode, open first match
   -d, --max-depth N      Maximum search depth
   -h, --help             Show this help
@@ -427,6 +532,7 @@ EXAMPLES:
   umm -g                             # Search all git objects (commits, branches, etc.)
   umm -g -p "fix"                    # Search git objects with initial pattern
   umm -g ~/projects/repo             # Search git objects in specific repository
+  umm -g --git-details               # Print detailed output for selected git object
   umm -g -p "commit:" | cut -d' ' -f1 | xargs git show  # Pipe to git commands
 EOF
         return 0
@@ -473,6 +579,10 @@ EOF
         ;;
       --git|-g)
         git_mode=true
+        shift
+        ;;
+      --git-details)
+        git_details=true
         shift
         ;;
       --noui|-n)
@@ -528,7 +638,7 @@ EOF
     fi
     
     # Run git search
-    _git_search "$root" "$pattern" "$search_filenames"
+    _git_search "$root" "$pattern" "$search_filenames" "$git_details" "$UMM_EDITOR"
     return $?
   fi
   
@@ -640,6 +750,7 @@ EOF
       --bind "alt-d:preview-half-page-down"
       --bind "ctrl-u:half-page-up"
       --bind "ctrl-d:half-page-down"
+      --bind "ctrl-o:accept"
       --multi
       --bind "tab:toggle+down,shift-tab:toggle+up"
     )
@@ -736,6 +847,7 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
       '(-a --all)'{-a,--all}'[Search all files (ignore .gitignore, include hidden)]'
       '(--no-filename)'--no-filename'[Disable filename/path matching]'
       '(-g --git)'{-g,--git}'[Search git repository (commits, branches, tags, etc.)]'
+      '(--git-details)'--git-details'[In git mode, print detailed output for selection]'
       '(-n --noui)'{-n,--noui}'[Non-interactive mode]'
       '(-d --max-depth)'{-d,--max-depth}'[Maximum depth]:depth:'
       '1:root path:_files -/'
