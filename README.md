@@ -82,6 +82,7 @@ umm -d 3                           # Limit search depth
 umm -g                             # Search git objects (commits/branches/tags/reflog/stashes)
 umm -g -p "fix"                    # Start git mode with pattern
 umm --git ~/projects/repo          # Git search in specific repository
+umm -g --git-details               # Print detailed output for selected git object
 ```
 
 ### Default Behavior
@@ -105,6 +106,7 @@ To search **everything** (override all defaults), use the `--all` flag.
 - `-a, --all` - Search all files including .gitignore'd and hidden files
 - `--no-filename` - Disable filename/path matching
 - `-g, --git` - Search [Git](https://github.com/git/git) objects in a unified list
+- `--git-details` - In git mode, print detailed output for the selected item
 - `-n, --noui` - Non-interactive mode, open first match directly
 - `-d, --max-depth N` - Maximum search depth
 - `-h, --help` - Show help
@@ -127,11 +129,17 @@ Preview is context-aware by type and uses this diff rendering fallback chain:
 - [`bat`](https://github.com/sharkdp/bat) (`--style=numbers,changes --language=diff`)
 - [`cat`](https://www.gnu.org/software/coreutils/) (plain output fallback)
 
-Selection output strips the type prefix, so results are easy to pipe:
+By default, selection output strips the type prefix, so results are easy to pipe:
 
 ```bash
 umm -g -p "commit:" | cut -d' ' -f1 | xargs git show
 umm -g -p "branch:" | sed 's/^[* ]*//' | xargs git checkout
+```
+
+Use `--git-details` to print detailed information for the selected object instead of compact output:
+
+```bash
+umm -g --git-details
 ```
 
 ### Keybindings
@@ -143,11 +151,12 @@ Common (file mode and [Git](https://github.com/git/git) mode):
 - `Shift+Up` / `Shift+Down` - Scroll preview one line up/down
 - `Alt+U` / `Alt+D` - Scroll preview half-page up/down
 - `Ctrl+U` / `Ctrl+D` - Scroll result list half-page up/down
+- `Enter` / `Ctrl+O` - Accept current selection
 
 Mode-specific:
 
 - File mode: `Tab` / `Shift+Tab` toggle multi-select and move
-- Git mode: `Ctrl+/` toggle preview pane
+- Git mode: `Ctrl+/` toggle preview pane; `Ctrl+O` opens selected `file:` entry in `$EDITOR`
 
 ### Exclude Patterns
 
