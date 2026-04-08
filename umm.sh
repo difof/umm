@@ -8,6 +8,20 @@
 
 UMM_VERSION="1.0.0"
 
+# Capture this script path at load time. In zsh, ${(%):-%x} inside a function
+# resolves to the function name (or "zsh"), which breaks fzf preview sourcing.
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+  UMM_SCRIPT_FILE="${BASH_SOURCE[0]}"
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  UMM_SCRIPT_FILE="${(%):-%x}"
+else
+  UMM_SCRIPT_FILE="$0"
+fi
+
+if [[ "$UMM_SCRIPT_FILE" != /* ]]; then
+  UMM_SCRIPT_FILE="$(cd "$(dirname "$UMM_SCRIPT_FILE")" && pwd)/$(basename "$UMM_SCRIPT_FILE")"
+fi
+
 # Color codes
 if [[ -t 2 ]]; then
   C_RED='\033[0;31m'
@@ -29,6 +43,10 @@ _error() { echo -e "${C_RED}x${C_RESET} $*" >&2; }
 _success() { echo -e "${C_GREEN}*${C_RESET} $*" >&2; }
 _info() { echo -e "${C_CYAN}i${C_RESET} $*" >&2; }
 _warn() { echo -e "${C_YELLOW}!${C_RESET} $*" >&2; }
+
+_strip_ansi() {
+  printf '%s' "$1" | sed -E $'s/\x1B\\[[0-9;]*[[:alpha:]]//g'
+}
 
 # Diff pager detection with fallback chain: delta > bat > cat
 # Returns the command to use for piping diff output
@@ -199,11 +217,12 @@ _git_aggregate_data() {
 _git_preview() {
   local repo_path="$1"
   local line="$2"
+  local plain_line=$(_strip_ansi "$line")
   
   # Extract type prefix
-  local type="${line%%:*}"
+  local type="${plain_line%%:*}"
   # Remove prefix and leading spaces
-  local content="${line#*:}"
+  local content="${plain_line#*:}"
   content="${content#"${content%%[![:space:]]*}"}"
   
   # Get the diff pager command
@@ -307,9 +326,10 @@ _git_preview() {
 _git_print_details() {
   local repo_path="$1"
   local line="$2"
+  local plain_line=$(_strip_ansi "$line")
 
-  local type="${line%%:*}"
-  local content="${line#*:}"
+  local type="${plain_line%%:*}"
+  local content="${plain_line#*:}"
   content="${content#"${content%%[![:space:]]*}"}"
 
   local git_color="always"
@@ -378,7 +398,7 @@ PREVIEW_EOF
   chmod +x "$preview_script"
   
   # Export variables for preview script
-  export UMM_SCRIPT_PATH="${BASH_SOURCE[0]:-${(%):-%x}}"
+  export UMM_SCRIPT_PATH="$UMM_SCRIPT_FILE"
   export UMM_REPO_PATH="$repo_path"
   
   # Aggregate git data
@@ -468,6 +488,34 @@ PREVIEW_EOF
 
   # Strip prefix and output
   echo "$content"
+}
+
+_file_preview() {
+  local raw_file="$1"
+  local raw_line="$2"
+  local file=$(_strip_ansi "$raw_file")
+  local line=$(_strip_ansi "$raw_line")
+
+  if [[ -z "$line" || ! "$line" =~ ^[0-9]+$ ]]; then
+    line=1
+  fi
+
+  if [[ ! -f "$file" ]]; then
+    echo "Error: Could not preview file $file"
+    return 1
+  fi
+
+  local start=$((line > 10 ? line - 10 : 1))
+  local end=$((line + 20))
+
+  if command -v bat >/dev/null 2>&1; then
+    bat --color=always --style=numbers,header \
+      --highlight-line "$line" \
+      --line-range "${start}:${end}" \
+      "$file" 2>/dev/null || echo "Error: Could not preview file $file"
+  else
+    sed -n "${start},${end}p" "$file" 2>/dev/null | nl -ba -s" " -w4 -v"$start"
+  fi
 }
 
 umm() {
@@ -720,13 +768,14 @@ EOF
       default_command="{ $default_content_command; $default_files_command; }"
     fi
     
-    # Build preview command
-    local preview_cmd
-    if [[ "$has_bat" == true ]]; then
-      preview_cmd="bat --color=always --style=numbers,header --highlight-line {2} --line-range {2}::15 {1} 2>/dev/null"
-    else
-      preview_cmd='f={1}; l={2}; s=$((l > 10 ? l - 10 : 1)); e=$((l + 20)); sed -n "${s},${e}p" "$f" 2>/dev/null | nl -ba -s" " -w4 -v"$s"'
-    fi
+    local preview_script=$(mktemp)
+    cat > "$preview_script" << 'PREVIEW_EOF'
+#!/usr/bin/env bash
+source "$UMM_SCRIPT_PATH"
+_file_preview "$1" "$2"
+PREVIEW_EOF
+    chmod +x "$preview_script"
+    export UMM_SCRIPT_PATH="$UMM_SCRIPT_FILE"
     
     # Build fzf options
     local fzf_opts=(
@@ -736,7 +785,7 @@ EOF
       --delimiter=:
       --prompt="> Search: "
       --info=inline
-      --preview="$preview_cmd"
+      --preview="$preview_script {1} {2}"
       --preview-window="top:60%"
       --bind "change:reload:sleep 0.05; $rg_command"
       --bind "start:reload:$rg_command"
@@ -758,6 +807,8 @@ EOF
     # Run fzf
     selected=$(FZF_DEFAULT_COMMAND="$default_command" \
       fzf "${fzf_opts[@]}")
+    rm -f "$preview_script"
+    unset UMM_SCRIPT_PATH
   fi
   
   # Check if selection was made
