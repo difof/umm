@@ -1,0 +1,252 @@
+package main
+
+import (
+	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestCLIIntegration(t *testing.T) {
+	binary := buildBinary(t)
+
+	t.Run("normal no-ui stat flow", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		output := runCmd(t, binary, "--root", root, "--no-ui", "--pattern", "needle", "--only-stat", "list")
+		if !strings.Contains(output, filepath.Join(root, "one.txt")) {
+			t.Fatalf("expected stat output to contain file path, got %q", output)
+		}
+	})
+
+	t.Run("hidden emitter plus preview flow", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		emit := runCmd(t, binary, "__emit-search", "--root", root, "--pattern", `one\.txt`, "--only-filename")
+		line := strings.TrimSpace(strings.SplitN(emit, "\n", 2)[0])
+		parts := strings.SplitN(line, "\t", 3)
+		if len(parts) < 3 {
+			t.Fatalf("unexpected emitter output: %q", emit)
+		}
+
+		preview := runCmd(t, binary, "preview", parts[0], parts[1])
+		if !strings.Contains(preview, "needle") {
+			t.Fatalf("expected preview output to contain file contents, got %q", preview)
+		}
+	})
+
+	t.Run("interactive normal flow with fake fzf", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--pattern", "needle")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=start-reload-first",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive normal run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		if !strings.Contains(string(logged), filepath.Join(root, "one.txt")) {
+			t.Fatalf("expected fake editor to receive selected file, got %q", string(logged))
+		}
+	})
+
+	t.Run("interactive dirname flow with fake fzf", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "cmd", "tool.txt"), "cmd tool\n")
+
+		binDir := t.TempDir()
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--only-dirname", "--pattern", "cmd")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR=true",
+			"FAKE_FZF_MODE=start-reload-first",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive dirname run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		want := filepath.Join(root, "cmd")
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("expected dirname output to contain %q, got %q", want, stdout.String())
+		}
+	})
+
+	t.Run("git no-ui flow", func(t *testing.T) {
+		root := t.TempDir()
+		runGit(t, root, "init")
+		runGit(t, root, "config", "user.email", "test@example.com")
+		runGit(t, root, "config", "user.name", "Test User")
+		writeFile(t, filepath.Join(root, "tracked.txt"), "hello\n")
+		runGit(t, root, "add", ".")
+		runGit(t, root, "commit", "-m", "initial commit")
+		runGit(t, root, "tag", "v1.0.0")
+
+		output := runCmd(t, binary, "--root", root, "--git", "--no-ui", "--pattern", `tag:\s+v1\.0\.0`)
+		if !strings.Contains(output, "tag:") || !strings.Contains(output, "v1.0.0") {
+			t.Fatalf("expected git output to contain tag summary, got %q", output)
+		}
+	})
+
+	t.Run("interactive git ctrl-o with fake fzf", func(t *testing.T) {
+		root := t.TempDir()
+		runGit(t, root, "init")
+		runGit(t, root, "config", "user.email", "test@example.com")
+		runGit(t, root, "config", "user.name", "Test User")
+		writeFile(t, filepath.Join(root, "tracked.txt"), "hello\n")
+		runGit(t, root, "add", ".")
+		runGit(t, root, "commit", "-m", "initial commit")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--git", "--git-mode", "tracked")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=ctrl-o-stdin-first",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive git run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		if !strings.Contains(string(logged), filepath.Join(root, "tracked.txt")) {
+			t.Fatalf("expected fake editor to receive tracked file, got %q", string(logged))
+		}
+	})
+}
+
+func buildBinary(t *testing.T) string {
+	t.Helper()
+	binDir := t.TempDir()
+	binary := filepath.Join(binDir, "umm-test")
+	cmd := exec.Command("go", "build", "-o", binary, ".")
+	cmd.Dir = "."
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, output)
+	}
+	return binary
+}
+
+func runCmd(t *testing.T, binary string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(binary, args...)
+	cmd.Env = append(os.Environ(), "EDITOR=true")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%s %s failed: %v\nstdout:\n%s\nstderr:\n%s", binary, strings.Join(args, " "), err, stdout.String(), stderr.String())
+	}
+	return stdout.String()
+}
+
+func writeFile(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q): %v", path, err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q): %v", path, err)
+	}
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, output)
+	}
+}
+
+func installFakeEditor(t *testing.T, path string, logPath string) {
+	t.Helper()
+	script := "#!/bin/sh\n: > \"$FAKE_EDITOR_LOG\"\nfor arg in \"$@\"; do\n  printf '%s\\n' \"$arg\" >> \"$FAKE_EDITOR_LOG\"\ndone\n"
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile fake editor: %v", err)
+	}
+	t.Setenv("FAKE_EDITOR_LOG", logPath)
+}
+
+func installFakeFZF(t *testing.T, path string) {
+	t.Helper()
+	script := `#!/bin/sh
+mode="${FAKE_FZF_MODE:-stdin-first}"
+query=""
+cmd=""
+prev=""
+for arg in "$@"; do
+  case "$arg" in
+    --query=*) query="${arg#--query=}" ;;
+  esac
+  if [ "$prev" = "--bind" ]; then
+    case "$arg" in
+      start:reload:*) cmd="${arg#start:reload:}" ;;
+    esac
+    prev=""
+    continue
+  fi
+  prev="$arg"
+done
+
+case "$mode" in
+  start-reload-first)
+    if [ -n "$cmd" ]; then
+      quoted_query=$(printf '%s' "$query" | sed "s/'/'\\''/g")
+      eval_cmd=$(printf '%s' "$cmd" | sed "s/{q}/'$quoted_query'/g")
+      /bin/sh -c "$eval_cmd" | sed -n '1p'
+    fi
+    ;;
+  ctrl-o-stdin-first)
+    printf 'ctrl-o\n'
+    sed -n '1p'
+    ;;
+  stdin-first|*)
+    sed -n '1p'
+    ;;
+esac
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile fake fzf: %v", err)
+	}
+}
