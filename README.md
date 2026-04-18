@@ -1,274 +1,302 @@
-# umm - Ultimate Multi-file Matcher
+# umm
 
-Interactive search tool for both file content and [Git](https://github.com/git/git) objects, powered by **[ripgrep](https://github.com/BurntSushi/ripgrep)**, **[fzf](https://github.com/junegunn/fzf)**, and optional preview tools like **[bat](https://github.com/sharkdp/bat)**/**[delta](https://github.com/dandavison/delta)**.
+`umm` is a Go CLI for interactive and non-interactive search across:
 
-**Compatible with:** bash, zsh
+- file contents
+- file paths
+- directory names
+- git objects
 
-## What it does
+It uses `ripgrep` for search, `fzf` for the interactive picker, and optional preview tools such as `delta` and `bat`.
 
-- **Live search** - Results update as you type
-- **Path + content matching** - Searches filenames/paths and file contents by default
-- **Preview** - See file contents with syntax highlighting
-- **Jump to line** - Opens your editor at the exact match
-- **Multi-select** - Open multiple files at once
-- **[Git](https://github.com/git/git) mode** - Search commits, branches, tags, reflog, and stashes in one view
-- **Diff pager fallback** - Uses [`delta`](https://github.com/dandavison/delta), then [`bat`](https://github.com/sharkdp/bat), then [`cat`](https://www.gnu.org/software/coreutils/)
+## Status
 
-```bash
-# Old way
-$ grep -r "searchTerm" .
-$ cd path/to/file
-$ vim file.js
-# ... search again ...
+The Go binary is the primary interface.
 
-# With umm
-$ umm
-# type, see results, hit enter
-# opens at exact line
-```
+The old `umm.sh` shell implementation is now legacy reference code and should not be treated as the main installation target.
+
+## Features
+
+- live file search with `fzf` reloads
+- content and path matching by default
+- file-only and dirname-only modes
+- non-interactive `--no-ui` flows
+- git search across commits, branches, tags, reflog, stashes, and tracked files
+- file, directory, and git previews through `umm preview`
+- editor opening with line targeting
+- system-open actions
+- Bubble Tea action picker via `--open-ask`
+- stat output modes for file and directory results
+
+## Requirements
+
+Required tools depend on the mode you use.
+
+Always required for normal file search:
+
+- `rg`
+
+Required for interactive search:
+
+- `fzf`
+
+Required for git mode:
+
+- `git`
+
+Required when opening in an editor:
+
+- `$EDITOR` or the default `nvim`
+
+Optional preview tools:
+
+- `delta`
+- `bat`
+
+Fallback chains:
+
+- diff preview: `delta -> bat -> cat -> internal`
+- file preview: `bat -> cat -> internal`
+- dir preview: internal tree preview
 
 ## Installation
 
-**Required:**
-- [`ripgrep` (`rg`)](https://github.com/BurntSushi/ripgrep) - Fast file search
-- [`fzf`](https://github.com/junegunn/fzf) - Interactive fuzzy finder
-- A text editor (set via `$EDITOR`, defaults to `nvim`)
-
-**Required for [Git](https://github.com/git/git) mode:**
-- [`git`](https://github.com/git/git) - Repository search and previews
-
-**Recommended:**
-- [`delta`](https://github.com/dandavison/delta) - Recommended for the best [Git](https://github.com/git/git) diff preview (`delta` -> `bat` -> `cat`)
-- [`bat`](https://github.com/sharkdp/bat) - Syntax highlighting in file previews (falls back to [`sed`](https://www.gnu.org/software/sed/) + line numbers if unavailable)
+### Build from source
 
 ```bash
-# macOS
-brew install ripgrep fzf bat nvim
-
-# Ubuntu/Debian
-apt install ripgrep fzf bat neovim
-
-# Arch
-pacman -S ripgrep fzf bat neovim
+git clone https://github.com/difof/umm.git
+cd umm
+go build -o umm .
 ```
 
-**Install:**
+### Install with Go
+
 ```bash
-# Clone
-git clone https://github.com/difof/umm.git
-
-# For zsh (includes tab completions)
-echo 'source /path/to/umm/umm.sh' >> ~/.zshrc
-source ~/.zshrc
-
-# For bash
-echo 'source /path/to/umm/umm.sh' >> ~/.bashrc
-source ~/.bashrc
+go install github.com/difof/umm@latest
 ```
 
 ## Usage
 
-```bash
-umm                                # Interactive search in current directory
-umm ~/projects                     # Search in specific directory
-umm -p "function"                  # Start with pattern
-umm -p "TODO" ~/projects           # Search with pattern in directory
-umm --no-filename -p "TODO"        # Search content only (disable path matching)
-umm -e "*.log" -e "test"           # Exclude patterns (gitignore-style globs)
-umm -a                             # Search all files (ignore .gitignore, include hidden)
-umm -p "error" -n                  # Open first match (no UI)
-umm -d 3                           # Limit search depth
-
-umm -g                             # Search git objects (commits/branches/tags/reflog/stashes)
-umm -g -p "fix"                    # Start git mode with pattern
-umm --git ~/projects/repo          # Git search in specific repository
-umm -g --git-details               # Print detailed output for selected git object
-```
-
-### Default Behavior
-
-**umm uses [ripgrep](https://github.com/BurntSushi/ripgrep)'s smart defaults:**
-
-- **Searches content and paths** - Query matches file contents and filenames/paths by default
-- **Disable path matching with `--no-filename`** - Restrict search to content (or git objects) only
-
-- **Respects `.gitignore`** - Automatically excludes files/directories listed in `.gitignore`
-- **Excludes `.git` directory** - Never searches inside `.git` by default
-- **Excludes hidden files** - Files/directories starting with `.` are skipped (except `.gitignore` itself)
-- **Skips binary files** - Binary files are automatically detected and excluded
-
-To search **everything** (override all defaults), use the `--all` flag.
-
-### Options
-
-- `-p, --pattern REGEXP` - Initial search pattern
-- `-e, --exclude PATTERN` - Exclude file/directory pattern (can be used multiple times)
-- `-a, --all` - Search all files including .gitignore'd and hidden files
-- `--no-filename` - Disable filename/path matching
-- `-g, --git` - Search [Git](https://github.com/git/git) objects in a unified list
-- `--git-details` - In git mode, print detailed output for the selected item
-- `-n, --noui` - Non-interactive mode, open first match directly
-- `-d, --max-depth N` - Maximum search depth
-- `-h, --help` - Show help
-- `-v, --version` - Show version
-
-### Git Mode
-
-When `-g/--git` is enabled, umm shows a single searchable list with [Git](https://github.com/git/git) type-prefixed entries:
-
-- `commit:` recent commit history (up to 1000 entries)
-- `branch:` local and remote branches
-- `tag:` tags with subjects
-- `reflog:` recent reflog entries (up to 100)
-- `stash:` stash entries
-- `file:` tracked repository files (enabled by default; disable with `--no-filename`)
-
-Preview is context-aware by type and uses this diff rendering fallback chain:
-
-- [`delta`](https://github.com/dandavison/delta) (recommended)
-- [`bat`](https://github.com/sharkdp/bat) (`--style=numbers,changes --language=diff`)
-- [`cat`](https://www.gnu.org/software/coreutils/) (plain output fallback)
-
-By default, selection output strips the type prefix, so results are easy to pipe:
+### Normal search
 
 ```bash
-umm -g -p "commit:" | cut -d' ' -f1 | xargs git show
-umm -g -p "branch:" | sed 's/^[* ]*//' | xargs git checkout
+umm
+umm --root ~/src --pattern TODO
+umm --root ~/src --pattern root\.go --only-filename
+umm --root ~/src --pattern cmd --only-dirname
+umm --root ~/src --pattern TODO --exclude vendor/**
+umm --root ~/src --pattern TODO --hidden
+umm --root ~/src --pattern TODO --no-ui
+umm --root ~/src --pattern TODO --only-stat lite
 ```
 
-Use `--git-details` to print detailed information for the selected object instead of compact output:
+### Git search
 
 ```bash
-umm -g --git-details
+umm --root ~/repo --git
+umm --root ~/repo --git --git-mode commit,tracked
+umm --root ~/repo --git --pattern 'tag:\s+v1'
+umm --root ~/repo --git --no-ui --pattern 'branch:.*main'
 ```
 
-### Keybindings
-
-Common (file mode and [Git](https://github.com/git/git) mode):
-
-- `Ctrl+G` / `Ctrl+B` - Jump to bottom/top of result list
-- `Alt+G` / `Alt+B` - Jump to top/bottom of preview
-- `Shift+Up` / `Shift+Down` - Scroll preview one line up/down
-- `Alt+U` / `Alt+D` - Scroll preview half-page up/down
-- `Ctrl+U` / `Ctrl+D` - Scroll result list half-page up/down
-- `Enter` / `Ctrl+O` - Accept current selection
-
-Mode-specific:
-
-- File mode: `Tab` / `Shift+Tab` toggle multi-select and move
-- Git mode: `Ctrl+/` toggle preview pane; `Ctrl+O` opens selected `file:` entry in `$EDITOR`
-
-### Exclude Patterns
-
-Exclude files or directories using gitignore-style glob patterns:
+### Action flags
 
 ```bash
-umm -e "*.log"                     # Exclude all .log files
-umm -e "test" -e "vendor"          # Exclude multiple patterns
-umm -e "**/node_modules/**"        # Exclude nested directories
-umm -e "test\ dir"                 # Escape spaces in patterns
+umm --root ~/src --pattern TODO --open-ask
+umm --root ~/src --pattern TODO --open-sys
+umm --root ~/src --pattern TODO --only-stat full
 ```
 
-### Search All Files
+## Flag Reference
 
-By default, umm respects `.gitignore` and excludes hidden files (via [ripgrep](https://github.com/BurntSushi/ripgrep)'s defaults). Use `--all` to override:
+Public v1 root flags:
+
+- `-r, --root`
+- `-p, --pattern`
+- `-e, --exclude`
+- `-a, --hidden`
+- `--no-filename`
+- `-f, --only-filename`
+- `-d, --only-dirname`
+- `-g, --git`
+- `--git-mode`
+- `-m, --max-depth`
+- `-n, --no-ui`
+- `-s, --no-multi`
+- `-q, --open-ask`
+- `-o, --open-sys`
+- `--only-stat`
+- `-h, --help`
+- `-v, --version`
+
+## Semantics
+
+### Default file search
+
+- searches file contents
+- also searches file paths
+- interactive default action opens selected files in `$EDITOR`
+
+### `--hidden`
+
+`--hidden` means include hidden files and ignored files.
+
+### `--no-filename`
+
+Search file contents only.
+
+### `--only-filename`
+
+Search file paths only.
+
+This mode returns file results only, not directory results.
+
+### `--only-dirname`
+
+Search directory names only.
+
+This mode returns the directory path itself. The default action is to print the selected directory path instead of opening it in the editor.
+
+### `--no-ui`
+
+`--no-ui` disables the interactive search picker.
+
+Rules:
+
+- `--pattern` is required
+- normal file modes open the first compatible match by default
+- dirname mode prints the first compatible directory path by default
+- `--only-stat` prints all matching stat outputs
+- git mode prints all matching git summaries by default
+
+### `--open-ask`
+
+After selection, `umm` shows a Bubble Tea action picker with these actions:
+
+- `editor`
+- `system`
+- `stat`
+- `cancel`
+
+Directory results do not offer the `editor` action.
+
+### `--only-stat`
+
+Normal file and directory modes support:
+
+- `full`
+- `lite`
+- `list`
+
+In git mode, summary/stat output is already the default behavior, so `--only-stat` is accepted for consistency but does not change the output format in v1.
+
+## Git Mode
+
+Git mode searches a unified typed list containing:
+
+- `commit:`
+- `branch:`
+- `tag:`
+- `reflog:`
+- `stash:`
+- `file:`
+
+`--git-mode` accepts repeated values and comma-separated values. If omitted, all git modes are enabled.
+
+Example:
 
 ```bash
-umm -a                             # Search everything (ignore .gitignore, include hidden)
-umm -a -e ".git"                   # Search all but exclude .git directory
-umm -a -p "SECRET" ~/project       # Find sensitive data in all files
+umm --root ~/repo --git --git-mode commit,branch
+umm --root ~/repo --git --git-mode tracked --git-mode stash
 ```
 
-### Editor Support
+Default git behavior:
 
-umm respects the `$EDITOR` environment variable and automatically uses the correct syntax for different editors:
+- interactive mode prints git summaries for the selected items
+- no-ui mode prints git summaries for all matches
+- open actions only apply to tracked-file selections
+
+Interactive git shortcut:
+
+- `Ctrl+O` opens the tracked-file subset directly in `$EDITOR`
+
+## Interactive Keys
+
+Common:
+
+- `Ctrl+G` / `Ctrl+B`: jump to bottom/top of result list
+- `Alt+G` / `Alt+B`: jump to top/bottom of preview
+- `Shift+Up` / `Shift+Down`: scroll preview by one line
+- `Alt+U` / `Alt+D`: scroll preview by half a page
+- `Ctrl+U` / `Ctrl+D`: scroll result list by half a page
+
+Normal search:
+
+- `Tab` / `Shift+Tab`: toggle multi-select and move
+
+Git search:
+
+- `Ctrl+/`: toggle preview pane
+- `Ctrl+O`: open tracked-file selections in `$EDITOR`
+
+## Editor Support
+
+Supported editor argument styles:
+
+- `vim`
+- `vi`
+- `nvim`
+- `nano`
+- `micro`
+- `emacs`
+- `emacsclient`
+- `code`
+- `code-insiders`
+- `cursor`
+- `agy`
+- `subl`
+- `sublime_text`
+
+## Shell Completions
+
+Generate completions with Cobra's built-in command.
+
+### Bash
 
 ```bash
-# Use your preferred editor
-EDITOR=vim umm              # Opens with: vim +linenum file
-EDITOR=code umm             # Opens with: code --goto file:linenum
-EDITOR=nano umm             # Opens with: nano +linenum file
-EDITOR=micro umm            # Opens with: micro +linenum file
-
-# Set default in your shell config
-export EDITOR=nvim          # Add to ~/.bashrc or ~/.zshrc
+umm completion bash > /etc/bash_completion.d/umm
 ```
 
-**Supported editors:** vim, vi, nvim, nano, micro, emacs, code (VSCode), cursor, subl (Sublime Text), and more.
+### Zsh
 
-## How it works
-
-### Live reload mechanism
-
-The key to instant updates is [fzf](https://github.com/junegunn/fzf)'s `--disabled` mode:
-
-```zsh
-fzf --disabled \
-  --bind "change:reload:sleep 0.05; rg {q} $root"
-```
-
-- `--disabled` - [fzf](https://github.com/junegunn/fzf) delegates ALL search to [ripgrep](https://github.com/BurntSushi/ripgrep) (no local filtering)
-- `change:reload:` - Every keystroke triggers new [ripgrep](https://github.com/BurntSushi/ripgrep) search
-- `sleep 0.05` - Debounce to prevent system overload
-- `{q}` - Current query from [fzf](https://github.com/junegunn/fzf) input
-
-Without `--disabled`, [fzf](https://github.com/junegunn/fzf) would only filter pre-loaded results. This enables true live search.
-
-### Preview system
-
-```zsh
-bat --color=always \
-  --highlight-line {2} \
-  --line-range {2}::15 \
-  {1}
-```
-
-- `{1}` = file path (from `--delimiter=:`)
-- `{2}` = line number
-- `--line-range {2}::15` = show line with 15 lines of context
-
-Preview updates as you navigate because [fzf](https://github.com/junegunn/fzf) re-runs the command with new values.
-
-### Performance
-
-1. **Debouncing** - Wait 50ms between keystrokes
-2. **Binary skipping** - [ripgrep](https://github.com/BurntSushi/ripgrep) skips binary files automatically
-3. **Gitignore respect** - [ripgrep](https://github.com/BurntSushi/ripgrep) respects `.gitignore` by default (use `--all` to override)
-4. **Hidden files excluded** - Hidden files/directories excluded by default (use `--all` to include)
-5. **Depth limiting** - Optional `--max-depth` flag
-6. **Smart case** - Case-insensitive unless uppercase in query
-
-## Troubleshooting
-
-**Command not found:**
 ```bash
-# Reload your shell config
-source ~/.zshrc   # for zsh
-source ~/.bashrc  # for bash
+mkdir -p "${fpath[1]}"
+umm completion zsh > "${fpath[1]}/_umm"
 ```
 
-**No syntax highlighting:**
+## Development
+
+Useful local commands:
+
 ```bash
-brew install bat
+go test ./...
+go build ./...
+task test
+task build
 ```
 
-**Slow on large projects:**
-```bash
-umm -d 3  # Limit depth
-```
+## Platform Support
 
-## Contributing
+Supported in v1:
 
-1. Fork and create branch: `git checkout -b feat/name`
-2. Make changes: `source umm.sh && umm --help`
-3. Commit: `git commit -m "feat: description"` using conventional commits
-4. Push and create PR
+- macOS
+- Linux
 
-**Commit prefixes:** `feat:` `fix:` `docs:` `refactor:` `perf:`
+Not part of v1:
 
-## Acknowledgments
-
-- [ripgrep](https://github.com/BurntSushi/ripgrep) - @BurntSushi
-- [fzf](https://github.com/junegunn/fzf) - @junegunn
-- [bat](https://github.com/sharkdp/bat) - @sharkdp
-- [delta](https://github.com/dandavison/delta) - @dandavison
+- Windows
+- Homebrew packaging
+- YAML config
+- worktree search
+- git blame mode
+- file-history search
