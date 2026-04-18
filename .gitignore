@@ -1,1 +1,5 @@
 .env
+.gocache/
+dist/
+/umm
+coverage.out
