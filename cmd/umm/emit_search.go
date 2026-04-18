@@ -1,0 +1,43 @@
+package umm
+
+import (
+	"github.com/difof/errors"
+	"github.com/difof/umm/internal/app"
+	"github.com/difof/umm/internal/cli"
+	"github.com/spf13/cobra"
+)
+
+func BuildEmitSearchCmd() *cobra.Command {
+	options := cli.RawRootOptions{}
+
+	emitCmd := &cobra.Command{
+		Use:    "__emit-search",
+		Short:  "Internal search emitter for fzf reloads",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runEmitSearchCmd(cmd, options)
+		},
+	}
+
+	emitCmd.Flags().StringVarP(&options.Root, "root", "r", ".", "root search path")
+	emitCmd.Flags().StringVarP(&options.Pattern, "pattern", "p", "", "regexp search pattern")
+	emitCmd.Flags().StringSliceVarP(&options.Excludes, "exclude", "e", nil, "file/dir exclusion glob")
+	emitCmd.Flags().BoolVarP(&options.Hidden, "hidden", "a", false, "search hidden and ignored files")
+	emitCmd.Flags().BoolVar(&options.NoFilename, "no-filename", false, "do not include filenames in search")
+	emitCmd.Flags().BoolVarP(&options.OnlyFilename, "only-filename", "f", false, "only search file paths")
+	emitCmd.Flags().BoolVarP(&options.OnlyDirname, "only-dirname", "d", false, "only search dir names")
+	emitCmd.Flags().UintVarP(&options.MaxDepth, "max-depth", "m", 0, "max search depth. zero means no limit")
+
+	return emitCmd
+}
+
+func runEmitSearchCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
+	defer errors.Recover(&err)
+
+	config := errors.MustResult(cli.NormalizeEmitterOptions(options))
+	if err := app.EmitSearch(cmd.Context(), config, cmd.OutOrStdout()); err != nil {
+		return errors.Wrap(err)
+	}
+
+	return nil
+}
