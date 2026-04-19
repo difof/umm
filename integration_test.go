@@ -52,7 +52,7 @@ func TestCLIIntegration(t *testing.T) {
 		cmd.Env = append(os.Environ(),
 			"PATH="+binDir+":"+os.Getenv("PATH"),
 			"EDITOR="+filepath.Join(binDir, "fake-editor"),
-			"FAKE_FZF_MODE=start-reload-first",
+			"FAKE_FZF_MODE=stdin-first",
 		)
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -71,6 +71,40 @@ func TestCLIIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("interactive startup with empty query streams initial results", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "first\n")
+		writeFile(t, filepath.Join(root, "two.txt"), "second\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root)
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=stdin-first",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive startup run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		content := string(logged)
+		if !strings.Contains(content, filepath.Join(root, "one.txt")) && !strings.Contains(content, filepath.Join(root, "two.txt")) {
+			t.Fatalf("expected initial startup results to open a file, got %q", content)
+		}
+	})
+
 	t.Run("interactive normal flow handles spaced query reload", func(t *testing.T) {
 		root := t.TempDir()
 		writeFile(t, filepath.Join(root, "one.txt"), "two words here\n")
@@ -84,7 +118,7 @@ func TestCLIIntegration(t *testing.T) {
 		cmd.Env = append(os.Environ(),
 			"PATH="+binDir+":"+os.Getenv("PATH"),
 			"EDITOR="+filepath.Join(binDir, "fake-editor"),
-			"FAKE_FZF_MODE=start-reload-first",
+			"FAKE_FZF_MODE=change-reload-first",
 		)
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -116,7 +150,7 @@ func TestCLIIntegration(t *testing.T) {
 		cmd.Env = append(os.Environ(),
 			"PATH="+binDir+":"+os.Getenv("PATH"),
 			"EDITOR="+filepath.Join(binDir, "fake-editor"),
-			"FAKE_FZF_MODE=start-reload-first",
+			"FAKE_FZF_MODE=change-reload-first",
 		)
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -146,7 +180,7 @@ func TestCLIIntegration(t *testing.T) {
 		cmd.Env = append(os.Environ(),
 			"PATH="+binDir+":"+os.Getenv("PATH"),
 			"EDITOR=true",
-			"FAKE_FZF_MODE=start-reload-first",
+			"FAKE_FZF_MODE=stdin-first",
 		)
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -444,7 +478,8 @@ func installFakeFZF(t *testing.T, path string) {
 	script := `#!/bin/sh
 mode="${FAKE_FZF_MODE:-stdin-first}"
 query=""
-cmd=""
+start_cmd=""
+change_cmd=""
 prev=""
 for arg in "$@"; do
   case "$arg" in
@@ -452,7 +487,8 @@ for arg in "$@"; do
   esac
   if [ "$prev" = "--bind" ]; then
     case "$arg" in
-      start:reload:*) cmd="${arg#start:reload:}" ;;
+      start:reload:*) start_cmd="${arg#start:reload:}" ;;
+      change:reload:*) change_cmd="${arg#change:reload:}" ;;
     esac
     prev=""
     continue
@@ -462,9 +498,16 @@ done
 
 case "$mode" in
   start-reload-first)
-    if [ -n "$cmd" ]; then
+    if [ -n "$start_cmd" ]; then
       quoted_query=$(printf '%s' "$query" | sed "s/'/'\\''/g")
-      eval_cmd=$(printf '%s' "$cmd" | sed "s/{q}/'$quoted_query'/g")
+      eval_cmd=$(printf '%s' "$start_cmd" | sed "s/{q}/'$quoted_query'/g")
+      /bin/sh -c "$eval_cmd" | sed -n '1p'
+    fi
+    ;;
+  change-reload-first)
+    if [ -n "$change_cmd" ]; then
+      quoted_query=$(printf '%s' "$query" | sed "s/'/'\\''/g")
+      eval_cmd=$(printf '%s' "$change_cmd" | sed "s/{q}/'$quoted_query'/g")
       /bin/sh -c "$eval_cmd" | sed -n '1p'
     fi
     ;;
