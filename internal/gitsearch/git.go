@@ -115,7 +115,7 @@ func filterResults(results []resultfmt.Result, query string, strict bool) ([]res
 }
 
 func collectCommits(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "log", "--format=%H\t%h\t%cs\t%s", "--all", "-n", "1000")
+	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "log", "--format=%H\t%h\t%cs\t%s", "--all")
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -218,7 +218,7 @@ func collectTags(ctx context.Context, root string) ([]resultfmt.Result, error) {
 }
 
 func collectReflog(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "reflog", "--format=%gd\t%h\t%gs\t%cr", "-n", "100")
+	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "reflog", "--format=%gd\t%h\t%gs\t%cr")
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
