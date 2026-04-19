@@ -272,6 +272,8 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 	args := []string{
 		"--delimiter=\t",
 		"--with-nth=3..",
+		"--header=" + buildGitHeader(cfg.GitModes),
+		"--header-first",
 		"--prompt=> Git: ",
 		"--info=inline",
 		"--query=" + cfg.Pattern,
@@ -387,4 +389,12 @@ func shellQuote(value string) string {
 
 func itoa(v int) string {
 	return strconv.Itoa(v)
+}
+
+func buildGitHeader(modes []string) string {
+	if len(modes) == 0 {
+		return "Git modes: all"
+	}
+
+	return "Git modes: " + strings.Join(modes, ", ")
 }
