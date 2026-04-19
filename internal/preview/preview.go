@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -204,22 +205,39 @@ func renderInternalFile(out io.Writer, path string, line int) {
 		end = line + 20
 	}
 
-	scanner := bufio.NewScanner(file)
+	reader := bufio.NewReader(file)
 	lineNumber := 0
-	for scanner.Scan() {
+	for {
+		text, err := reader.ReadString('\n')
+		if err != nil && !stderrors.Is(err, io.EOF) {
+			_, _ = io.WriteString(out, fmt.Sprintf("Error: Could not read preview file %s\n", path))
+			return
+		}
+		if text == "" && stderrors.Is(err, io.EOF) {
+			break
+		}
+
 		lineNumber++
 		if lineNumber < start {
+			if stderrors.Is(err, io.EOF) {
+				break
+			}
 			continue
 		}
 		if lineNumber > end {
 			break
 		}
+		text = strings.TrimRight(text, "\r\n")
 
 		prefix := fmt.Sprintf("%4d ", lineNumber)
 		if lineNumber == line && line > 0 {
 			prefix = fmt.Sprintf(">%4d ", lineNumber)
 		}
-		_, _ = io.WriteString(out, prefix+scanner.Text()+"\n")
+		_, _ = io.WriteString(out, prefix+text+"\n")
+
+		if stderrors.Is(err, io.EOF) {
+			break
+		}
 	}
 }
 
