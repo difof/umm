@@ -1,8 +1,10 @@
 package search
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/difof/umm/internal/cli"
@@ -120,6 +122,46 @@ func TestQuery(t *testing.T) {
 		}
 		if len(results) != 1 {
 			t.Fatalf("expected hidden path result, got %#v", results)
+		}
+	})
+}
+
+func TestEmitLinesHighlightsMatches(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "nested", "root.go"), "package main\n")
+	writeFile(t, filepath.Join(root, "cmd", "tool.txt"), "command\n")
+	writeFile(t, filepath.Join(root, "a.txt"), "needle one\n")
+
+	t.Run("filename matches are highlighted", func(t *testing.T) {
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename}
+		var out bytes.Buffer
+		if err := EmitLines(t.Context(), cfg, `root\.go`, &out); err != nil {
+			t.Fatalf("EmitLines returned error: %v", err)
+		}
+		if !strings.Contains(out.String(), matchStartANSI+"root.go"+matchResetANSI) {
+			t.Fatalf("expected filename highlight, got %q", out.String())
+		}
+	})
+
+	t.Run("dirname matches are highlighted", func(t *testing.T) {
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		var out bytes.Buffer
+		if err := EmitLines(t.Context(), cfg, `cmd`, &out); err != nil {
+			t.Fatalf("EmitLines returned error: %v", err)
+		}
+		if !strings.Contains(out.String(), matchStartANSI+"cmd"+matchResetANSI) {
+			t.Fatalf("expected dirname highlight, got %q", out.String())
+		}
+	})
+
+	t.Run("content matches are highlighted", func(t *testing.T) {
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		var out bytes.Buffer
+		if err := EmitLines(t.Context(), cfg, `needle`, &out); err != nil {
+			t.Fatalf("EmitLines returned error: %v", err)
+		}
+		if !strings.Contains(out.String(), matchStartANSI+"needle"+matchResetANSI) {
+			t.Fatalf("expected content highlight, got %q", out.String())
 		}
 	})
 }
