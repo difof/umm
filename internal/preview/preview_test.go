@@ -96,6 +96,33 @@ func TestRunDiffPreview(t *testing.T) {
 	}
 }
 
+func TestRunFilePreviewWithLongLine(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "long.txt")
+	longLine := strings.Repeat("x", 300000)
+	if err := os.WriteFile(file, []byte(longLine+"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	if err := os.Setenv("PATH", t.TempDir()); err != nil {
+		t.Fatalf("Setenv PATH: %v", err)
+	}
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Path: file, Line: 1})
+	if err != nil {
+		t.Fatalf("EncodeMeta file: %v", err)
+	}
+	var out bytes.Buffer
+	if err := Run(t.Context(), "file", meta, &out); err != nil {
+		t.Fatalf("Run file preview returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), strings.Repeat("x", 64)) {
+		t.Fatalf("expected long-line preview output, got %q", out.String())
+	}
+}
+
 func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
