@@ -64,18 +64,3 @@ func runRootCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
 
 	return nil
 }
-
-func normalizeGitModeInput(values []string) []string {
-	normalized := make([]string, 0, len(values))
-	for _, value := range values {
-		for _, part := range strings.Split(value, ",") {
-			part = strings.TrimSpace(part)
-			if part == "" {
-				continue
-			}
-			normalized = append(normalized, part)
-		}
-	}
-
-	return normalized
-}
