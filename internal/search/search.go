@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"io"
-	"io/fs"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -46,6 +45,11 @@ func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) (
 	})
 	if err != nil {
 		return nil, errors.Wrap(err)
+	}
+	if cfg.SearchMode == cli.SearchModeOnlyDirname {
+		sort.Slice(results, func(i int, j int) bool {
+			return results[i].Display < results[j].Display
+		})
 	}
 
 	return results, nil
@@ -215,85 +219,49 @@ func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict 
 		return nil
 	}
 
-	dirs, err := listDirs(ctx, cfg)
-	if err != nil {
-		return errors.Wrap(err)
-	}
-
-	for _, dir := range dirs {
-		rel := relDisplay(cfg.Root, dir)
-		if !matcher.MatchString(filepath.ToSlash(rel)) {
-			continue
-		}
-		if err := emit(resultfmt.Result{
-			Kind:        resultfmt.KindDir,
-			PreviewMode: "dir",
-			Display:     rel,
-			Path:        dir,
+	useGitIgnoreFilter := !cfg.Hidden
+	if useGitIgnoreFilter {
+		matches := []dirCandidate{}
+		if err := walkDirs(ctx, cfg, func(candidate dirCandidate) error {
+			if !matcher.MatchString(candidate.rel) {
+				return nil
+			}
+			matches = append(matches, candidate)
+			return nil
 		}); err != nil {
 			return errors.Wrap(err)
 		}
-	}
 
-	return nil
-}
-
-func listDirs(ctx context.Context, cfg cli.RootConfig) ([]string, error) {
-	seen := map[string]struct{}{}
-	dirs := []string{}
-
-	err := filepath.WalkDir(cfg.Root, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		if path == cfg.Root {
-			return nil
+		filtered, err := filterIgnoredDirCandidates(ctx, cfg.Root, matches)
+		if err != nil {
+			return errors.Wrap(err)
 		}
 
-		rel := relDisplay(cfg.Root, path)
-		if cfg.MaxDepth > 0 && depth(rel) > cfg.MaxDepth {
-			if entry.IsDir() {
-				return filepath.SkipDir
+		for _, candidate := range filtered {
+			if err := emit(resultfmt.Result{
+				Kind:        resultfmt.KindDir,
+				PreviewMode: "dir",
+				Display:     candidate.rel,
+				Path:        candidate.abs,
+			}); err != nil {
+				return errors.Wrap(err)
 			}
-			return nil
-		}
-		if hiddenPath(rel) && !cfg.Hidden {
-			if entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if excluded(cfg.Excludes, rel, entry.IsDir()) {
-			if entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !entry.IsDir() {
-			return nil
 		}
 
-		if _, ok := seen[path]; ok {
-			return nil
-		}
-		seen[path] = struct{}{}
-		dirs = append(dirs, path)
 		return nil
+	}
+
+	return walkDirs(ctx, cfg, func(candidate dirCandidate) error {
+		if !matcher.MatchString(candidate.rel) {
+			return nil
+		}
+		return emit(resultfmt.Result{
+			Kind:        resultfmt.KindDir,
+			PreviewMode: "dir",
+			Display:     candidate.rel,
+			Path:        candidate.abs,
+		})
 	})
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-
-	if cfg.Hidden {
-		return dirs, nil
-	}
-
-	filtered, err := filterIgnoredDirs(ctx, cfg.Root, dirs)
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-
-	return filtered, nil
 }
 
 func listFiles(ctx context.Context, cfg cli.RootConfig) ([]string, error) {
@@ -486,54 +454,6 @@ func depth(rel string) int {
 	}
 
 	return strings.Count(rel, "/") + 1
-}
-
-func filterIgnoredDirs(ctx context.Context, root string, dirs []string) ([]string, error) {
-	if len(dirs) == 0 {
-		return dirs, nil
-	}
-
-	if _, err := execx.Output(ctx, root, nil, "git", "-C", root, "rev-parse", "--show-toplevel"); err != nil {
-		return dirs, nil
-	}
-
-	var input strings.Builder
-	for _, dir := range dirs {
-		rel := relDisplay(root, dir)
-		key := strings.TrimSuffix(filepath.ToSlash(rel), "/")
-		if key == "." || key == "" {
-			continue
-		}
-		input.WriteString(key)
-		input.WriteByte('/')
-		input.WriteByte('\n')
-	}
-
-	ignoredOutput, err := execx.CombinedOutput(ctx, root, nil, strings.NewReader(input.String()), "git", "-C", root, "check-ignore", "--stdin")
-	ignored := map[string]struct{}{}
-	if err != nil {
-		if code, ok := execx.ExitCode(err); !ok || code != 1 {
-			return nil, errors.Wrap(err)
-		}
-	}
-	for _, line := range strings.Split(strings.TrimSpace(ignoredOutput), "\n") {
-		line = strings.TrimSpace(strings.TrimSuffix(line, "/"))
-		if line == "" {
-			continue
-		}
-		ignored[line] = struct{}{}
-	}
-
-	filtered := make([]string, 0, len(dirs))
-	for _, dir := range dirs {
-		key := strings.TrimSuffix(filepath.ToSlash(relDisplay(root, dir)), "/")
-		if _, ok := ignored[key]; ok {
-			continue
-		}
-		filtered = append(filtered, dir)
-	}
-
-	return filtered, nil
 }
 
 func itoa(v int) string {
