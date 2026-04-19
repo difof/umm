@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -32,6 +33,11 @@ type rgJSONLine struct {
 
 type resultEmitter func(resultfmt.Result) error
 
+const (
+	matchStartANSI = "\x1b[1;33m"
+	matchResetANSI = "\x1b[0m"
+)
+
 func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
 	err := emitQuery(ctx, cfg, query, strict, func(result resultfmt.Result) error {
@@ -47,6 +53,8 @@ func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) (
 
 func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Writer) error {
 	return emitQuery(ctx, cfg, query, false, func(result resultfmt.Result) error {
+		result.Display = highlightDisplay(result.Display, query)
+
 		line, err := resultfmt.EncodeLine(result)
 		if err != nil {
 			return errors.Wrap(err)
@@ -335,6 +343,78 @@ func compileSmartRegex(pattern string) (*regexp.Regexp, error) {
 	}
 
 	return regexp.Compile("(?i)" + pattern)
+}
+
+func highlightDisplay(display string, query string) string {
+	if query == "" || display == "" {
+		return display
+	}
+
+	matcher, err := compileSmartRegex(query)
+	if err != nil {
+		return display
+	}
+
+	ranges := matcher.FindAllStringIndex(display, -1)
+	if len(ranges) == 0 {
+		return display
+	}
+
+	merged := mergeRanges(ranges)
+	if len(merged) == 0 {
+		return display
+	}
+
+	var builder strings.Builder
+	last := 0
+	for _, match := range merged {
+		if match[0] > last {
+			builder.WriteString(display[last:match[0]])
+		}
+		builder.WriteString(matchStartANSI)
+		builder.WriteString(display[match[0]:match[1]])
+		builder.WriteString(matchResetANSI)
+		last = match[1]
+	}
+	if last < len(display) {
+		builder.WriteString(display[last:])
+	}
+
+	return builder.String()
+}
+
+func mergeRanges(ranges [][]int) [][]int {
+	filtered := make([][]int, 0, len(ranges))
+	for _, match := range ranges {
+		if len(match) != 2 || match[0] >= match[1] {
+			continue
+		}
+		filtered = append(filtered, []int{match[0], match[1]})
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	sort.Slice(filtered, func(i int, j int) bool {
+		if filtered[i][0] == filtered[j][0] {
+			return filtered[i][1] < filtered[j][1]
+		}
+		return filtered[i][0] < filtered[j][0]
+	})
+
+	merged := [][]int{filtered[0]}
+	for _, current := range filtered[1:] {
+		last := merged[len(merged)-1]
+		if current[0] <= last[1] {
+			if current[1] > last[1] {
+				last[1] = current[1]
+			}
+			continue
+		}
+		merged = append(merged, current)
+	}
+
+	return merged
 }
 
 func hiddenPath(rel string) bool {
