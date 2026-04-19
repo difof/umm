@@ -12,7 +12,6 @@ import (
 	"github.com/difof/umm/internal/actions"
 	"github.com/difof/umm/internal/cli"
 	"github.com/difof/umm/internal/deps"
-	"github.com/difof/umm/internal/editor"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/gitsearch"
 	"github.com/difof/umm/internal/preview"
@@ -107,7 +106,7 @@ func runGit(ctx context.Context, cfg cli.RootConfig) error {
 		if len(tracked) == 0 {
 			return errors.New("Ctrl+O in git mode requires at least one tracked file selection")
 		}
-		return actions.OpenInEditor(ctx, editor.Resolve(), tracked)
+		return actions.OpenInEditor(ctx, tracked)
 	}
 
 	return handleGitSelection(ctx, cfg, results, false)
@@ -123,10 +122,10 @@ func runNormalNoUI(ctx context.Context, cfg cli.RootConfig, results []resultfmt.
 	}
 
 	if cfg.Action == cli.ActionSystem {
-		return handleNormalSelection(ctx, cfg, firstCompatibleNormalResults(results), true)
+		return handleNormalSelection(ctx, cfg, results[:1], true)
 	}
 
-	return handleNormalSelection(ctx, cfg, firstCompatibleNormalResults(results), true)
+	return handleNormalSelection(ctx, cfg, results[:1], true)
 }
 
 func runGitNoUI(ctx context.Context, cfg cli.RootConfig, results []resultfmt.Result) error {
@@ -169,7 +168,7 @@ func handleNormalSelection(ctx context.Context, cfg cli.RootConfig, results []re
 		if noUI {
 			editorResults = results[:1]
 		}
-		return actions.OpenInEditor(ctx, editor.Resolve(), editorResults)
+		return actions.OpenInEditor(ctx, editorResults)
 	}
 }
 
@@ -326,7 +325,7 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 }
 
 func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {
-	parts := []string{shellQuote(exe), "__emit-search", "--root", shellQuote(cfg.Root), "--pattern", "{q}"}
+	parts := []string{"printf '%s' {q} |", shellQuote(exe), "__emit-search", "--pattern-stdin", "--root", shellQuote(cfg.Root)}
 	for _, pattern := range cfg.Excludes {
 		parts = append(parts, "--exclude", shellQuote(pattern))
 	}
@@ -347,13 +346,6 @@ func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {
 	}
 
 	return strings.Join(parts, " ")
-}
-
-func firstCompatibleNormalResults(results []resultfmt.Result) []resultfmt.Result {
-	if len(results) == 0 {
-		return nil
-	}
-	return results[:1]
 }
 
 func shellQuote(value string) string {
