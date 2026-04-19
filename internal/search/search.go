@@ -3,7 +3,6 @@ package search
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/cli"
 	"github.com/difof/umm/internal/execx"
+	"github.com/difof/umm/internal/jsonx"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
@@ -148,7 +148,7 @@ func searchContent(ctx context.Context, cfg cli.RootConfig, query string, strict
 		trimmedLine := strings.TrimSpace(string(line))
 		if trimmedLine != "" {
 			var event rgJSONLine
-			if err := json.Unmarshal([]byte(trimmedLine), &event); err != nil {
+			if err := jsonx.Fast.Unmarshal([]byte(trimmedLine), &event); err != nil {
 				if strict {
 					return nil, errors.Wrapf(err, "parse ripgrep json")
 				}
