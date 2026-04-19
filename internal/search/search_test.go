@@ -103,6 +103,26 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("dirname query results are sorted", func(t *testing.T) {
+		if err := os.MkdirAll(filepath.Join(root, "zzz"), 0o755); err != nil {
+			t.Fatalf("MkdirAll zzz: %v", err)
+		}
+		if err := os.MkdirAll(filepath.Join(root, "aaa"), 0o755); err != nil {
+			t.Fatalf("MkdirAll aaa: %v", err)
+		}
+
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		results, err := Query(t.Context(), cfg, ".", true)
+		if err != nil {
+			t.Fatalf("Query returned error: %v", err)
+		}
+		for i := 1; i < len(results); i++ {
+			if results[i-1].Display > results[i].Display {
+				t.Fatalf("expected sorted dirname results, got %#v", results)
+			}
+		}
+	})
+
 	t.Run("hidden search excludes dot paths by default", func(t *testing.T) {
 		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename}
 		results, err := Query(t.Context(), cfg, "secret\\.txt", true)
