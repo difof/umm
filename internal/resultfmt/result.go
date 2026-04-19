@@ -2,10 +2,10 @@ package resultfmt
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"strings"
 
 	"github.com/difof/errors"
+	"github.com/difof/umm/internal/jsonx"
 )
 
 type Kind string
@@ -43,7 +43,7 @@ func EncodeLine(result Result) (string, error) {
 }
 
 func EncodeMeta(result Result) (string, error) {
-	payload, err := json.Marshal(result)
+	payload, err := jsonx.Fast.Marshal(result)
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -59,7 +59,7 @@ func DecodeMeta(meta string) (Result, error) {
 		return result, errors.Wrapf(err, "decode result metadata")
 	}
 
-	if err := json.Unmarshal(payload, &result); err != nil {
+	if err := jsonx.Fast.Unmarshal(payload, &result); err != nil {
 		return result, errors.Wrapf(err, "decode result metadata")
 	}
 
