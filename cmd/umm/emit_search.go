@@ -1,6 +1,9 @@
 package umm
 
 import (
+	"io"
+	"strings"
+
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/app"
 	"github.com/difof/umm/internal/cli"
@@ -9,6 +12,7 @@ import (
 
 func BuildEmitSearchCmd() *cobra.Command {
 	options := cli.RawRootOptions{}
+	patternStdin := false
 
 	emitCmd := &cobra.Command{
 		Use:    "__emit-search",
@@ -27,12 +31,26 @@ func BuildEmitSearchCmd() *cobra.Command {
 	emitCmd.Flags().BoolVarP(&options.OnlyFilename, "only-filename", "f", false, "only search file paths")
 	emitCmd.Flags().BoolVarP(&options.OnlyDirname, "only-dirname", "d", false, "only search dir names")
 	emitCmd.Flags().UintVarP(&options.MaxDepth, "max-depth", "m", 0, "max search depth. zero means no limit")
+	emitCmd.Flags().BoolVar(&patternStdin, "pattern-stdin", false, "read the search pattern from stdin")
+	_ = emitCmd.Flags().MarkHidden("pattern-stdin")
 
 	return emitCmd
 }
 
 func runEmitSearchCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
 	defer errors.Recover(&err)
+
+	patternStdin, err := cmd.Flags().GetBool("pattern-stdin")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if patternStdin {
+		data, err := io.ReadAll(cmd.InOrStdin())
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		options.Pattern = strings.TrimRight(string(data), "\r\n")
+	}
 
 	config := errors.MustResult(cli.NormalizeEmitterOptions(options))
 	if err := app.EmitSearch(cmd.Context(), config, cmd.OutOrStdout()); err != nil {
