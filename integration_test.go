@@ -71,6 +71,70 @@ func TestCLIIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("interactive normal flow handles spaced query reload", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "two words here\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--pattern", "two words")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=start-reload-first",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive spaced-query run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		if !strings.Contains(string(logged), filepath.Join(root, "one.txt")) {
+			t.Fatalf("expected fake editor to receive spaced-query result, got %q", string(logged))
+		}
+	})
+
+	t.Run("interactive normal flow handles shell metachar query", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "semi:semicolon\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--pattern", "semi:semicolon")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=start-reload-first",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive metachar-query run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		if !strings.Contains(string(logged), filepath.Join(root, "one.txt")) {
+			t.Fatalf("expected fake editor to receive metachar-query result, got %q", string(logged))
+		}
+	})
+
 	t.Run("interactive dirname flow with fake fzf", func(t *testing.T) {
 		root := t.TempDir()
 		writeFile(t, filepath.Join(root, "cmd", "tool.txt"), "cmd tool\n")
@@ -114,6 +178,122 @@ func TestCLIIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("no-ui open-ask stat covers all matches", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "a.go"), "package a\n")
+		writeFile(t, filepath.Join(root, "b.go"), "package b\n")
+
+		cmd := exec.Command(binary, "--root", root, "--no-ui", "--open-ask", "--pattern", "package")
+		cmd.Env = append(os.Environ(), "EDITOR=true", "UMM_TEST_OPEN_ASK_CHOICE=stat")
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("no-ui open-ask stat run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), filepath.Join(root, "a.go")) || !strings.Contains(stdout.String(), filepath.Join(root, "b.go")) {
+			t.Fatalf("expected stat output for all matches, got %q", stdout.String())
+		}
+	})
+
+	t.Run("no-ui open-ask editor opens all file matches", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "a.go"), "package a\n")
+		writeFile(t, filepath.Join(root, "b.go"), "package b\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+
+		cmd := exec.Command(binary, "--root", root, "--no-ui", "--open-ask", "--pattern", "package")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"UMM_TEST_OPEN_ASK_CHOICE=editor",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("no-ui open-ask editor run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		content := string(logged)
+		if !strings.Contains(content, filepath.Join(root, "a.go")) || !strings.Contains(content, filepath.Join(root, "b.go")) {
+			t.Fatalf("expected fake editor to receive all file matches, got %q", content)
+		}
+	})
+
+	t.Run("editor command with args is supported", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "main.go"), "package main\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+
+		cmd := exec.Command(binary, "--root", root, "--no-ui", "--pattern", "package")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor")+" --wait",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("editor-with-args run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		content := string(logged)
+		if !strings.Contains(content, "--wait") || !strings.Contains(content, filepath.Join(root, "main.go")) {
+			t.Fatalf("expected fake editor to receive fixed args and file path, got %q", content)
+		}
+	})
+
+	t.Run("no-ui open-ask system opens all compatible matches", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "a.go"), "package a\n")
+		writeFile(t, filepath.Join(root, "b.go"), "package b\n")
+
+		binDir := t.TempDir()
+		systemLog := filepath.Join(binDir, "system.log")
+		installFakeSystemOpeners(t, binDir, systemLog)
+
+		cmd := exec.Command(binary, "--root", root, "--no-ui", "--open-ask", "--pattern", "package")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR=true",
+			"UMM_TEST_OPEN_ASK_CHOICE=system",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("no-ui open-ask system run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(systemLog)
+		if err != nil {
+			t.Fatalf("ReadFile system log: %v", err)
+		}
+		content := string(logged)
+		if !strings.Contains(content, filepath.Join(root, "a.go")) || !strings.Contains(content, filepath.Join(root, "b.go")) {
+			t.Fatalf("expected fake system opener to receive all matches, got %q", content)
+		}
+	})
+
 	t.Run("interactive git ctrl-o with fake fzf", func(t *testing.T) {
 		root := t.TempDir()
 		runGit(t, root, "init")
@@ -148,6 +328,46 @@ func TestCLIIntegration(t *testing.T) {
 		}
 		if !strings.Contains(string(logged), filepath.Join(root, "tracked.txt")) {
 			t.Fatalf("expected fake editor to receive tracked file, got %q", string(logged))
+		}
+	})
+
+	t.Run("git no-ui open-ask editor uses tracked subset only", func(t *testing.T) {
+		root := t.TempDir()
+		runGit(t, root, "init")
+		runGit(t, root, "config", "user.email", "test@example.com")
+		runGit(t, root, "config", "user.name", "Test User")
+		writeFile(t, filepath.Join(root, "tracked.txt"), "hello\n")
+		runGit(t, root, "add", ".")
+		runGit(t, root, "commit", "-m", "initial commit")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+
+		cmd := exec.Command(binary, "--root", root, "--git", "--no-ui", "--open-ask", "--pattern", ".")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"UMM_TEST_OPEN_ASK_CHOICE=editor",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("git no-ui open-ask run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(editorLog)
+		if err != nil {
+			t.Fatalf("ReadFile editor log: %v", err)
+		}
+		content := string(logged)
+		if !strings.Contains(content, filepath.Join(root, "tracked.txt")) {
+			t.Fatalf("expected tracked file to be opened, got %q", content)
+		}
+		if strings.Contains(content, "commit:") {
+			t.Fatalf("expected non-file git objects to be excluded from open action, got %q", content)
 		}
 	})
 }
@@ -206,6 +426,17 @@ func installFakeEditor(t *testing.T, path string, logPath string) {
 		t.Fatalf("WriteFile fake editor: %v", err)
 	}
 	t.Setenv("FAKE_EDITOR_LOG", logPath)
+}
+
+func installFakeSystemOpeners(t *testing.T, dir string, logPath string) {
+	t.Helper()
+	script := "#!/bin/sh\nfor arg in \"$@\"; do\n  printf '%s\\n' \"$arg\" >> \"$FAKE_SYSTEM_LOG\"\ndone\n"
+	for _, name := range []string{"open", "xdg-open"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
+			t.Fatalf("WriteFile fake %s: %v", name, err)
+		}
+	}
+	t.Setenv("FAKE_SYSTEM_LOG", logPath)
 }
 
 func installFakeFZF(t *testing.T, path string) {
