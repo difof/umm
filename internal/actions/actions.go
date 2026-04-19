@@ -19,18 +19,23 @@ import (
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func OpenInEditor(ctx context.Context, editorCommand string, results []resultfmt.Result) error {
+func OpenInEditor(ctx context.Context, results []resultfmt.Result) error {
 	targets := editorTargets(results)
 
 	if len(targets) == 0 {
 		return errors.New("no compatible file results to open in editor")
 	}
 
-	if err := deps.Require(editorCommand, "editor open"); err != nil {
+	command, err := editor.Resolve()
+	if err != nil {
 		return errors.Wrap(err)
 	}
 
-	return editor.Open(ctx, editorCommand, targets)
+	if err := deps.Require(command.Name, "editor open"); err != nil {
+		return errors.Wrap(err)
+	}
+
+	return editor.Open(ctx, command, targets)
 }
 
 func OpenWithSystem(ctx context.Context, results []resultfmt.Result) error {
@@ -162,17 +167,10 @@ func PromptAction(ctx context.Context, results []resultfmt.Result, isGit bool) e
 		return errors.Wrap(err)
 	}
 
-	program := tea.NewProgram(
-		newPromptModel(items),
-		tea.WithInput(os.Stdin),
-		tea.WithOutput(os.Stderr),
-	)
-	model, err := program.Run()
+	choice, err := promptChoice(items)
 	if err != nil {
 		return errors.Wrap(err)
 	}
-
-	choice := model.(promptModel).choice
 	switch choice {
 	case "", "cancel":
 		return nil
@@ -183,7 +181,7 @@ func PromptAction(ctx context.Context, results []resultfmt.Result, isGit bool) e
 		} else {
 			targets = editorCompatible(results)
 		}
-		return OpenInEditor(ctx, editor.Resolve(), targets)
+		return OpenInEditor(ctx, targets)
 	case "system":
 		targets := results
 		if isGit {
@@ -198,6 +196,24 @@ func PromptAction(ctx context.Context, results []resultfmt.Result, isGit bool) e
 	default:
 		return errors.Newf("unsupported action %q", choice)
 	}
+}
+
+func promptChoice(items []promptItem) (string, error) {
+	if choice := os.Getenv("UMM_TEST_OPEN_ASK_CHOICE"); choice != "" {
+		return choice, nil
+	}
+
+	program := tea.NewProgram(
+		newPromptModel(items),
+		tea.WithInput(os.Stdin),
+		tea.WithOutput(os.Stderr),
+	)
+	model, err := program.Run()
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+
+	return model.(promptModel).choice, nil
 }
 
 func uniquePaths(results []resultfmt.Result) []string {
