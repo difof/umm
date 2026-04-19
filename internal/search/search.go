@@ -1,7 +1,6 @@
 package search
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"io/fs"
@@ -31,26 +30,23 @@ type rgJSONLine struct {
 	} `json:"data"`
 }
 
+type resultEmitter func(resultfmt.Result) error
+
 func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
-	switch cfg.SearchMode {
-	case cli.SearchModeOnlyDirname:
-		return searchDirnames(ctx, cfg, query, strict)
-	case cli.SearchModeOnlyFilename:
-		return searchFilenames(ctx, cfg, query, strict)
-	case cli.SearchModeDefault:
-		return searchDefault(ctx, cfg, query, strict)
-	default:
-		return nil, errors.Newf("unsupported search mode %q", cfg.SearchMode)
+	results := []resultfmt.Result{}
+	err := emitQuery(ctx, cfg, query, strict, func(result resultfmt.Result) error {
+		results = append(results, result)
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err)
 	}
+
+	return results, nil
 }
 
 func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Writer) error {
-	results, err := Query(ctx, cfg, query, false)
-	if err != nil {
-		return errors.Wrap(err)
-	}
-
-	for _, result := range results {
+	return emitQuery(ctx, cfg, query, false, func(result resultfmt.Result) error {
 		line, err := resultfmt.EncodeLine(result)
 		if err != nil {
 			return errors.Wrap(err)
@@ -59,45 +55,44 @@ func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Wri
 		if _, err := io.WriteString(out, line+"\n"); err != nil {
 			return errors.Wrap(err)
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
-func searchDefault(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+func emitQuery(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
+	switch cfg.SearchMode {
+	case cli.SearchModeOnlyDirname:
+		return emitDirnames(ctx, cfg, query, strict, emit)
+	case cli.SearchModeOnlyFilename:
+		return emitFilenames(ctx, cfg, query, strict, emit)
+	case cli.SearchModeDefault:
+		return emitDefault(ctx, cfg, query, strict, emit)
+	default:
+		return errors.Newf("unsupported search mode %q", cfg.SearchMode)
+	}
+}
+
+func emitDefault(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
 	if query == "" {
 		if cfg.NoFilename {
-			return nil, nil
+			return nil
 		}
 
-		pathResults, err := searchFilenames(ctx, cfg, query, strict)
-		if err != nil {
-			return nil, errors.Wrap(err)
-		}
-
-		return pathResults, nil
+		return emitFilenames(ctx, cfg, query, strict, emit)
 	}
 
-	contentResults, err := searchContent(ctx, cfg, query, strict)
-	if err != nil {
-		return nil, errors.Wrap(err)
+	if err := emitContent(ctx, cfg, query, strict, emit); err != nil {
+		return errors.Wrap(err)
 	}
 	if cfg.NoFilename {
-		return contentResults, nil
+		return nil
 	}
 
-	pathResults, err := searchFilenames(ctx, cfg, query, strict)
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-
-	results := make([]resultfmt.Result, 0, len(contentResults)+len(pathResults))
-	results = append(results, contentResults...)
-	results = append(results, pathResults...)
-	return results, nil
+	return emitFilenames(ctx, cfg, query, strict, emit)
 }
 
-func searchContent(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+func emitContent(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
 	args := []string{"--json", "--line-number", "--no-heading", "--smart-case"}
 	if cfg.MaxDepth > 0 {
 		args = append(args, "--max-depth", itoa(cfg.MaxDepth))
@@ -110,132 +105,129 @@ func searchContent(ctx context.Context, cfg cli.RootConfig, query string, strict
 	}
 	args = append(args, query, cfg.Root)
 
-	output, err := execx.CombinedOutput(ctx, cfg.Root, nil, nil, "rg", args...)
+	stderr, err := execx.StreamLines(ctx, cfg.Root, nil, nil, "rg", args, func(line []byte) error {
+		trimmedLine := strings.TrimSpace(string(line))
+		if trimmedLine == "" {
+			return nil
+		}
+
+		var event rgJSONLine
+		if err := jsonx.Fast.Unmarshal([]byte(trimmedLine), &event); err != nil {
+			if strict {
+				return errors.Wrapf(err, "parse ripgrep json")
+			}
+			return nil
+		}
+		if event.Type != "match" {
+			return nil
+		}
+
+		path := event.Data.Path.Text
+		lineNumber := event.Data.LineNumber
+		text := strings.TrimRight(event.Data.Lines.Text, "\r\n")
+		return emit(resultfmt.Result{
+			Kind:        resultfmt.KindFile,
+			PreviewMode: "file",
+			Display:     relDisplay(cfg.Root, path) + ":" + itoa(lineNumber) + ":" + text,
+			Path:        path,
+			Line:        lineNumber,
+		})
+	})
 	if err != nil {
 		if code, ok := execx.ExitCode(err); ok {
 			switch code {
 			case 1:
-				return nil, nil
+				return nil
 			case 2:
 				if !strict {
-					return nil, nil
+					return nil
 				}
 			}
 		}
 
 		if !strict {
-			return nil, nil
+			return nil
 		}
 
-		trimmed := strings.TrimSpace(output)
+		trimmed := strings.TrimSpace(stderr)
 		if trimmed != "" {
-			return nil, errors.New(trimmed)
+			return errors.New(trimmed)
 		}
-		return nil, errors.Wrap(err)
+		return errors.Wrap(err)
 	}
 
-	results := []resultfmt.Result{}
-	reader := bufio.NewReader(strings.NewReader(output))
-	for {
-		line, readErr := reader.ReadBytes('\n')
-		if readErr != nil && readErr != io.EOF {
-			return nil, errors.Wrap(readErr)
-		}
-		if len(line) == 0 && readErr == io.EOF {
-			break
-		}
-
-		trimmedLine := strings.TrimSpace(string(line))
-		if trimmedLine != "" {
-			var event rgJSONLine
-			if err := jsonx.Fast.Unmarshal([]byte(trimmedLine), &event); err != nil {
-				if strict {
-					return nil, errors.Wrapf(err, "parse ripgrep json")
-				}
-			} else if event.Type == "match" {
-				path := event.Data.Path.Text
-				lineNumber := event.Data.LineNumber
-				text := strings.TrimRight(event.Data.Lines.Text, "\r\n")
-				display := relDisplay(cfg.Root, path) + ":" + itoa(lineNumber) + ":" + text
-				results = append(results, resultfmt.Result{
-					Kind:        resultfmt.KindFile,
-					PreviewMode: "file",
-					Display:     display,
-					Path:        path,
-					Line:        lineNumber,
-				})
-			}
-		}
-
-		if readErr == io.EOF {
-			break
-		}
-	}
-
-	return results, nil
+	return nil
 }
 
-func searchFilenames(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+func emitFilenames(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
 	matcher, err := compileSmartRegex(query)
 	if err != nil {
 		if strict {
-			return nil, errors.Wrap(err)
+			return errors.Wrap(err)
 		}
-		return nil, nil
+		return nil
 	}
 
-	files, err := listFiles(ctx, cfg)
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
+	_, err = execx.StreamLines(ctx, cfg.Root, nil, nil, "rg", buildFilesArgs(cfg), func(line []byte) error {
+		path := strings.TrimSpace(string(line))
+		if path == "" {
+			return nil
+		}
 
-	results := []resultfmt.Result{}
-	for _, path := range files {
 		rel := relDisplay(cfg.Root, path)
 		if !matcher.MatchString(rel) {
-			continue
+			return nil
 		}
 
-		results = append(results, resultfmt.Result{
+		return emit(resultfmt.Result{
 			Kind:        resultfmt.KindFile,
 			PreviewMode: "file",
 			Display:     rel,
 			Path:        path,
 		})
+	})
+	if err != nil {
+		if code, ok := execx.ExitCode(err); ok {
+			if code == 1 || code == 2 {
+				return nil
+			}
+		}
+		return errors.Wrap(err)
 	}
 
-	return results, nil
+	return nil
 }
 
-func searchDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
 	matcher, err := compileSmartRegex(query)
 	if err != nil {
 		if strict {
-			return nil, errors.Wrap(err)
+			return errors.Wrap(err)
 		}
-		return nil, nil
+		return nil
 	}
 
 	dirs, err := listDirs(ctx, cfg)
 	if err != nil {
-		return nil, errors.Wrap(err)
+		return errors.Wrap(err)
 	}
 
-	results := []resultfmt.Result{}
 	for _, dir := range dirs {
 		rel := relDisplay(cfg.Root, dir)
 		if !matcher.MatchString(filepath.ToSlash(rel)) {
 			continue
 		}
-		results = append(results, resultfmt.Result{
+		if err := emit(resultfmt.Result{
 			Kind:        resultfmt.KindDir,
 			PreviewMode: "dir",
 			Display:     rel,
 			Path:        dir,
-		})
+		}); err != nil {
+			return errors.Wrap(err)
+		}
 	}
 
-	return results, nil
+	return nil
 }
 
 func listDirs(ctx context.Context, cfg cli.RootConfig) ([]string, error) {
@@ -297,6 +289,28 @@ func listDirs(ctx context.Context, cfg cli.RootConfig) ([]string, error) {
 }
 
 func listFiles(ctx context.Context, cfg cli.RootConfig) ([]string, error) {
+	files := []string{}
+	_, err := execx.StreamLines(ctx, cfg.Root, nil, nil, "rg", buildFilesArgs(cfg), func(line []byte) error {
+		path := strings.TrimSpace(string(line))
+		if path == "" {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		if code, ok := execx.ExitCode(err); ok {
+			if code == 1 || code == 2 {
+				return files, nil
+			}
+		}
+		return nil, errors.Wrap(err)
+	}
+
+	return files, nil
+}
+
+func buildFilesArgs(cfg cli.RootConfig) []string {
 	args := []string{"--files"}
 	if cfg.MaxDepth > 0 {
 		args = append(args, "--max-depth", itoa(cfg.MaxDepth))
@@ -308,22 +322,7 @@ func listFiles(ctx context.Context, cfg cli.RootConfig) ([]string, error) {
 		args = append(args, "--hidden", "--no-ignore")
 	}
 	args = append(args, cfg.Root)
-
-	output, err := execx.Output(ctx, cfg.Root, nil, "rg", args...)
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-
-	files := []string{}
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		files = append(files, line)
-	}
-
-	return files, nil
+	return args
 }
 
 func compileSmartRegex(pattern string) (*regexp.Regexp, error) {
