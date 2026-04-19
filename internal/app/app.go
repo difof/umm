@@ -200,6 +200,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 	input := startNormalSearchInput(ctx, exe, cfg)
 
 	args := []string{
+		"--ansi",
 		"--disabled",
 		"--query=" + cfg.Pattern,
 		"--delimiter=\t",
@@ -270,6 +271,7 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 	previewCommand := shellQuote(exe) + " preview {1} {2}"
 
 	args := []string{
+		"--ansi",
 		"--delimiter=\t",
 		"--with-nth=3..",
 		"--header=" + buildGitHeader(cfg.GitModes),
