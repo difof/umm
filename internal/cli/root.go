@@ -92,16 +92,16 @@ type RootConfig struct {
 func NormalizeRootOptions(raw RawRootOptions) (cfg RootConfig, err error) {
 	defer errors.Recover(&err)
 
-	return normalize(raw, true)
+	return normalize(raw)
 }
 
 func NormalizeEmitterOptions(raw RawRootOptions) (cfg RootConfig, err error) {
 	defer errors.Recover(&err)
 
-	return normalize(raw, false)
+	return normalize(raw)
 }
 
-func normalize(raw RawRootOptions, strictRoot bool) (cfg RootConfig, err error) {
+func normalize(raw RawRootOptions) (cfg RootConfig, err error) {
 	defer errors.Recover(&err)
 
 	if raw.NoFilename && raw.OnlyFilename {
@@ -187,11 +187,7 @@ func normalize(raw RawRootOptions, strictRoot bool) (cfg RootConfig, err error) 
 		searchMode = SearchModeOnlyFilename
 	}
 
-	if strictRoot {
-		cfg.Root = root
-	} else {
-		cfg.Root = root
-	}
+	cfg.Root = root
 	cfg.Pattern = raw.Pattern
 	cfg.Excludes = append([]string(nil), raw.Excludes...)
 	cfg.Hidden = raw.Hidden
@@ -247,24 +243,4 @@ func parseGitModes(raw []string) ([]string, error) {
 
 func (cfg RootConfig) UsesRG() bool {
 	return cfg.SearchMode == SearchModeDefault || cfg.SearchMode == SearchModeOnlyFilename
-}
-
-func (cfg RootConfig) UsesFZF() bool {
-	return !cfg.NoUI
-}
-
-func (cfg RootConfig) UsesGit() bool {
-	return cfg.SearchMode == SearchModeGit
-}
-
-func (cfg RootConfig) UsesDirSearch() bool {
-	return cfg.SearchMode == SearchModeOnlyDirname
-}
-
-func (cfg RootConfig) WantsEditorOpenByDefault() bool {
-	if cfg.Action != ActionDefault {
-		return false
-	}
-
-	return cfg.SearchMode != SearchModeGit && cfg.SearchMode != SearchModeOnlyDirname
 }
