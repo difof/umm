@@ -65,9 +65,25 @@ func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Wri
 }
 
 func searchDefault(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+	if query == "" {
+		if cfg.NoFilename {
+			return nil, nil
+		}
+
+		pathResults, err := searchFilenames(ctx, cfg, query, strict)
+		if err != nil {
+			return nil, errors.Wrap(err)
+		}
+
+		return pathResults, nil
+	}
+
 	contentResults, err := searchContent(ctx, cfg, query, strict)
 	if err != nil {
 		return nil, errors.Wrap(err)
+	}
+	if cfg.NoFilename {
+		return contentResults, nil
 	}
 
 	pathResults, err := searchFilenames(ctx, cfg, query, strict)
@@ -119,39 +135,41 @@ func searchContent(ctx context.Context, cfg cli.RootConfig, query string, strict
 	}
 
 	results := []resultfmt.Result{}
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
-			continue
+	reader := bufio.NewReader(strings.NewReader(output))
+	for {
+		line, readErr := reader.ReadBytes('\n')
+		if readErr != nil && readErr != io.EOF {
+			return nil, errors.Wrap(readErr)
+		}
+		if len(line) == 0 && readErr == io.EOF {
+			break
 		}
 
-		var event rgJSONLine
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			if strict {
-				return nil, errors.Wrapf(err, "parse ripgrep json")
+		trimmedLine := strings.TrimSpace(string(line))
+		if trimmedLine != "" {
+			var event rgJSONLine
+			if err := json.Unmarshal([]byte(trimmedLine), &event); err != nil {
+				if strict {
+					return nil, errors.Wrapf(err, "parse ripgrep json")
+				}
+			} else if event.Type == "match" {
+				path := event.Data.Path.Text
+				lineNumber := event.Data.LineNumber
+				text := strings.TrimRight(event.Data.Lines.Text, "\r\n")
+				display := relDisplay(cfg.Root, path) + ":" + itoa(lineNumber) + ":" + text
+				results = append(results, resultfmt.Result{
+					Kind:        resultfmt.KindFile,
+					PreviewMode: "file",
+					Display:     display,
+					Path:        path,
+					Line:        lineNumber,
+				})
 			}
-			continue
-		}
-		if event.Type != "match" {
-			continue
 		}
 
-		path := event.Data.Path.Text
-		lineNumber := event.Data.LineNumber
-		text := strings.TrimRight(event.Data.Lines.Text, "\r\n")
-		display := relDisplay(cfg.Root, path) + ":" + itoa(lineNumber) + ":" + text
-		results = append(results, resultfmt.Result{
-			Kind:        resultfmt.KindFile,
-			PreviewMode: "file",
-			Display:     display,
-			Path:        path,
-			Line:        lineNumber,
-		})
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, errors.Wrap(err)
+		if readErr == io.EOF {
+			break
+		}
 	}
 
 	return results, nil
