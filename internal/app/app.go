@@ -197,6 +197,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 
 	reloadCommand := buildEmitSearchCommand(exe, cfg)
 	previewCommand := shellQuote(exe) + " preview {1} {2}"
+	input := startNormalSearchInput(ctx, exe, cfg)
 
 	args := []string{
 		"--disabled",
@@ -208,7 +209,6 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 		"--preview=" + previewCommand,
 		"--preview-window=top:60%",
 		"--bind", "change:reload:sleep 0.05; " + reloadCommand,
-		"--bind", "start:reload:" + reloadCommand,
 		"--bind", "ctrl-g:last",
 		"--bind", "ctrl-b:first",
 		"--bind", "alt-g:preview-top",
@@ -228,7 +228,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 		)
 	}
 
-	output, err := execx.InteractiveOutput(ctx, "", nil, "fzf", args...)
+	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, input, "fzf", args...)
 	if err != nil {
 		if code, ok := execx.ExitCode(err); ok && (code == 1 || code == 130) && strings.TrimSpace(output) == "" {
 			return nil, nil
@@ -325,27 +325,56 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 }
 
 func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {
-	parts := []string{"printf '%s' {q} |", shellQuote(exe), "__emit-search", "--pattern-stdin", "--root", shellQuote(cfg.Root)}
+	parts := []string{"printf '%s' {q} |", shellQuote(exe)}
+	for _, arg := range buildEmitArgs(cfg, true) {
+		parts = append(parts, shellQuote(arg))
+	}
+	return strings.Join(parts, " ")
+}
+
+func buildEmitArgs(cfg cli.RootConfig, patternStdin bool) []string {
+	args := []string{"__emit-search"}
+	if patternStdin {
+		args = append(args, "--pattern-stdin")
+	} else if cfg.Pattern != "" {
+		args = append(args, "--pattern", cfg.Pattern)
+	}
+	args = append(args, "--root", cfg.Root)
 	for _, pattern := range cfg.Excludes {
-		parts = append(parts, "--exclude", shellQuote(pattern))
+		args = append(args, "--exclude", pattern)
 	}
 	if cfg.Hidden {
-		parts = append(parts, "--hidden")
+		args = append(args, "--hidden")
 	}
 	if cfg.NoFilename {
-		parts = append(parts, "--no-filename")
+		args = append(args, "--no-filename")
 	}
 	if cfg.OnlyFilename {
-		parts = append(parts, "--only-filename")
+		args = append(args, "--only-filename")
 	}
 	if cfg.OnlyDirname {
-		parts = append(parts, "--only-dirname")
+		args = append(args, "--only-dirname")
 	}
 	if cfg.MaxDepth > 0 {
-		parts = append(parts, "--max-depth", itoa(cfg.MaxDepth))
+		args = append(args, "--max-depth", itoa(cfg.MaxDepth))
 	}
 
-	return strings.Join(parts, " ")
+	return args
+}
+
+func startNormalSearchInput(ctx context.Context, exe string, cfg cli.RootConfig) io.Reader {
+	reader, writer := io.Pipe()
+	go func() {
+		args := buildEmitArgs(cfg, true)
+		err := execx.Run(ctx, "", nil, strings.NewReader(cfg.Pattern), writer, io.Discard, exe, args...)
+		if err != nil {
+			_ = writer.CloseWithError(err)
+			return
+		}
+		_ = writer.Close()
+	}()
+
+	return reader
 }
 
 func shellQuote(value string) string {
