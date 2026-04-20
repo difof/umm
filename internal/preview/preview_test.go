@@ -123,6 +123,46 @@ func TestRunFilePreviewWithLongLine(t *testing.T) {
 	}
 }
 
+func TestRunFilePreviewDoesNotFallBackToCat(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "many.txt")
+	lines := make([]string, 0, 260)
+	for i := 1; i <= 260; i++ {
+		lines = append(lines, strings.Repeat("x", 4)+" "+itoa(i))
+	}
+	if err := os.WriteFile(file, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	shimDir := t.TempDir()
+	shim := filepath.Join(shimDir, "cat")
+	if err := os.WriteFile(shim, []byte("#!/bin/sh\nprintf 'CAT_FALLBACK_USED\\n'\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile shim: %v", err)
+	}
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	if err := os.Setenv("PATH", shimDir); err != nil {
+		t.Fatalf("Setenv PATH: %v", err)
+	}
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Path: file})
+	if err != nil {
+		t.Fatalf("EncodeMeta file: %v", err)
+	}
+	var out bytes.Buffer
+	if err := Run(t.Context(), "file", meta, &out); err != nil {
+		t.Fatalf("Run file preview returned error: %v", err)
+	}
+
+	text := out.String()
+	if strings.Contains(text, "CAT_FALLBACK_USED") {
+		t.Fatalf("expected internal bounded preview, got cat fallback output %q", text)
+	}
+	if strings.Contains(text, "260") {
+		t.Fatalf("expected preview to be capped before line 260, got %q", text)
+	}
+}
+
 func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
