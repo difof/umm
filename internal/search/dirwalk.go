@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 
@@ -24,9 +25,20 @@ type dirJob struct {
 	depth int
 }
 
-func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) error) error {
+type dirWalkWarning struct {
+	Path string
+	Err  error
+}
+
+type dirWalkReport struct {
+	Warnings []dirWalkWarning
+}
+
+func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) error) (dirWalkReport, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	report := dirWalkReport{}
 
 	jobs := make(chan dirJob, dirWalkWorkerCount()*2)
 	results := make(chan dirCandidate, dirWalkWorkerCount()*8)
@@ -34,10 +46,17 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 
 	var pending sync.WaitGroup
 	var workers sync.WaitGroup
+	var warningsMu sync.Mutex
+	recordWarning := func(path string, err error) {
+		warningsMu.Lock()
+		report.Warnings = append(report.Warnings, dirWalkWarning{Path: path, Err: err})
+		warningsMu.Unlock()
+	}
 
 	processDir := func(job dirJob) {
 		entries, err := os.ReadDir(job.abs)
 		if err != nil {
+			recordWarning(job.abs, err)
 			return
 		}
 
@@ -132,13 +151,16 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 	}
 
 	if visitErr != nil {
-		return errors.Wrap(visitErr)
+		return dirWalkReport{}, errors.Wrap(visitErr)
 	}
 	if err := ctx.Err(); err != nil && err != context.Canceled {
-		return errors.Wrap(err)
+		return dirWalkReport{}, errors.Wrap(err)
 	}
+	sort.Slice(report.Warnings, func(i int, j int) bool {
+		return report.Warnings[i].Path < report.Warnings[j].Path
+	})
 
-	return nil
+	return report, nil
 }
 
 func filterIgnoredDirCandidates(ctx context.Context, root string, candidates []dirCandidate) ([]dirCandidate, error) {
