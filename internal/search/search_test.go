@@ -103,6 +103,41 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("dirname search reports unreadable directories without failing", func(t *testing.T) {
+		locked := filepath.Join(root, "locked")
+		if err := os.MkdirAll(filepath.Join(locked, "child"), 0o755); err != nil {
+			t.Fatalf("MkdirAll locked: %v", err)
+		}
+		if err := os.Chmod(locked, 0o000); err != nil {
+			t.Fatalf("Chmod locked: %v", err)
+		}
+		defer func() {
+			_ = os.Chmod(locked, 0o755)
+		}()
+		if _, err := os.ReadDir(locked); err == nil {
+			t.Skip("test environment can still read chmod 000 directories")
+		}
+
+		var warnings bytes.Buffer
+		oldWarningWriter := dirWalkWarningWriter
+		dirWalkWarningWriter = &warnings
+		defer func() {
+			dirWalkWarningWriter = oldWarningWriter
+		}()
+
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		results, err := Query(t.Context(), cfg, "locked|cmd", true)
+		if err != nil {
+			t.Fatalf("Query returned error: %v", err)
+		}
+		if len(results) == 0 {
+			t.Fatal("expected dirname results despite unreadable subtree")
+		}
+		if !strings.Contains(warnings.String(), locked) {
+			t.Fatalf("expected warning output to mention %q, got %q", locked, warnings.String())
+		}
+	})
+
 	t.Run("dirname query results are sorted", func(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(root, "zzz"), 0o755); err != nil {
 			t.Fatalf("MkdirAll zzz: %v", err)
