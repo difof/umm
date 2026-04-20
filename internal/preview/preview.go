@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	stderrors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -62,12 +61,6 @@ func renderFilePreview(ctx context.Context, out io.Writer, result resultfmt.Resu
 		}
 		args = append(args, result.Path)
 		if err := execx.Run(ctx, "", nil, nil, out, io.Discard, "bat", args...); err == nil {
-			return
-		}
-	}
-
-	if result.Line <= 0 && deps.Has("cat") {
-		if err := execx.Run(ctx, "", nil, nil, out, io.Discard, "cat", result.Path); err == nil {
 			return
 		}
 	}
@@ -209,17 +202,17 @@ func renderInternalFile(out io.Writer, path string, line int) {
 	lineNumber := 0
 	for {
 		text, err := reader.ReadString('\n')
-		if err != nil && !stderrors.Is(err, io.EOF) {
+		if err != nil && !errors.Is(err, io.EOF) {
 			_, _ = io.WriteString(out, fmt.Sprintf("Error: Could not read preview file %s\n", path))
 			return
 		}
-		if text == "" && stderrors.Is(err, io.EOF) {
+		if text == "" && errors.Is(err, io.EOF) {
 			break
 		}
 
 		lineNumber++
 		if lineNumber < start {
-			if stderrors.Is(err, io.EOF) {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			continue
@@ -235,7 +228,7 @@ func renderInternalFile(out io.Writer, path string, line int) {
 		}
 		_, _ = io.WriteString(out, prefix+text+"\n")
 
-		if stderrors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 	}
