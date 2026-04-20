@@ -329,11 +329,39 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 }
 
 func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {
-	parts := []string{"printf '%s' {q} |", shellQuote(exe)}
-	for _, arg := range buildEmitArgs(cfg, true) {
+	parts := []string{shellQuote(exe)}
+	for _, arg := range buildEmitReloadArgs(cfg) {
+		if arg == "{q}" {
+			parts = append(parts, arg)
+			continue
+		}
 		parts = append(parts, shellQuote(arg))
 	}
 	return strings.Join(parts, " ")
+}
+
+func buildEmitReloadArgs(cfg cli.RootConfig) []string {
+	args := []string{"__emit-search", "--pattern", "{q}", "--root", cfg.Root}
+	for _, pattern := range cfg.Excludes {
+		args = append(args, "--exclude", pattern)
+	}
+	if cfg.Hidden {
+		args = append(args, "--hidden")
+	}
+	if cfg.NoFilename {
+		args = append(args, "--no-filename")
+	}
+	if cfg.OnlyFilename {
+		args = append(args, "--only-filename")
+	}
+	if cfg.OnlyDirname {
+		args = append(args, "--only-dirname")
+	}
+	if cfg.MaxDepth > 0 {
+		args = append(args, "--max-depth", itoa(cfg.MaxDepth))
+	}
+
+	return args
 }
 
 func buildEmitArgs(cfg cli.RootConfig, patternStdin bool) []string {
