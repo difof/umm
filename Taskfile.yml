@@ -1,0 +1,27 @@
+version: '3'
+
+tasks:
+  test:
+    cmds:
+      - go test ./...
+
+  build:
+    cmds:
+      - go build ./...
+
+  install:
+    cmds:
+      - go install .
+
+  completion:bash:
+    cmds:
+      - go run . completion bash
+
+  completion:zsh:
+    cmds:
+      - go run . completion zsh
+
+  ci:
+    cmds:
+      - task test
+      - task build
