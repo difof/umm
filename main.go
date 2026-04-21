@@ -27,7 +27,12 @@ func main() {
 	rootCmd.SilenceUsage = true
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, errors.Stacktrace(err))
+		errcfg := []errors.StacktraceOption{
+			errors.StacktraceWithFunctionFormat(errors.StacktraceFunctionFuncOnly),
+			errors.StacktraceWithTrimFilePath(true),
+		}
+
+		fmt.Fprintln(os.Stderr, errors.Stacktrace(err, errcfg...))
 		os.Exit(1)
 	}
 }
