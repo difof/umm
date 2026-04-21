@@ -1,4 +1,4 @@
-# umm
+# Ultimate Multi-file Matcher
 
 `umm` is a Go CLI for interactive and non-interactive search across:
 
