@@ -18,6 +18,7 @@ func main() {
 
 	rootCmd := umm.BuildRootCmd(workingDir)
 	rootCmd.AddCommand(
+		umm.BuildConfigCmd(),
 		umm.BuildPreviewCmd(),
 		umm.BuildEmitSearchCmd(),
 	)
