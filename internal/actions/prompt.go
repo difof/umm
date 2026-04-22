@@ -10,11 +10,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/editor"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func PromptAction(ctx context.Context, results []resultfmt.Result, isGit bool) error {
+func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result, isGit bool) error {
 	items := buildPromptItems(results, isGit)
 	if len(items) == 0 {
 		return errors.New("no actions are available for the selected results")
@@ -38,7 +39,7 @@ func PromptAction(ctx context.Context, results []resultfmt.Result, isGit bool) e
 		} else {
 			targets = editorCompatible(results)
 		}
-		return OpenInEditor(ctx, targets)
+		return OpenInEditor(ctx, appConfig, targets)
 	case "system":
 		targets := results
 		if isGit {
