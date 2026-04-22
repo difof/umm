@@ -33,7 +33,7 @@ func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []res
 	case "", "cancel":
 		return nil
 	case "editor":
-		targets := results
+		var targets []resultfmt.Result
 		if isGit {
 			targets = TrackedFileSubset(results)
 		} else {
