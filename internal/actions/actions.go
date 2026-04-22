@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/difof/errors"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/deps"
 	"github.com/difof/umm/internal/editor"
 	"github.com/difof/umm/internal/execx"
@@ -12,14 +13,14 @@ import (
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func OpenInEditor(ctx context.Context, results []resultfmt.Result) error {
+func OpenInEditor(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result) error {
 	targets := editorTargets(results)
 
 	if len(targets) == 0 {
 		return errors.New("no compatible file results to open in editor")
 	}
 
-	command, err := editor.Resolve()
+	command, err := editor.Resolve(appConfig)
 	if err != nil {
 		return errors.Wrap(err)
 	}

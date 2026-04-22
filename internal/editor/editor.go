@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/difof/errors"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/execx"
 )
 
@@ -18,17 +19,37 @@ type Target struct {
 }
 
 type Command struct {
-	Name string
-	Args []string
+	Name    string
+	Args    []string
+	Profile *ummconfig.Editor
 }
 
-func Resolve() (Command, error) {
+func Resolve(appConfig ummconfig.Config) (Command, error) {
 	raw := os.Getenv("EDITOR")
 	if raw == "" {
 		raw = "nvim"
 	}
 
-	return Parse(raw)
+	parsed, err := Parse(raw)
+	if err != nil {
+		return Command{}, errors.Wrap(err)
+	}
+
+	profile, ok, exact := lookupEditor(appConfig.Editors, parsed.Name)
+	if !ok {
+		return parsed, nil
+	}
+
+	resolved := profile
+	name := resolved.Cmd
+	if !exact {
+		name = parsed.Name
+	}
+	return Command{
+		Name:    name,
+		Args:    append(append([]string(nil), parsed.Args...), resolved.Args...),
+		Profile: &resolved,
+	}, nil
 }
 
 func Parse(raw string) (Command, error) {
@@ -80,9 +101,24 @@ func Open(ctx context.Context, command Command, targets []Target) error {
 	}
 
 	args := append([]string(nil), command.Args...)
-	args = append(args, BuildArgs(command.Name, targets[0].Path, targets[0].Line)...)
-	for _, target := range targets[1:] {
-		args = append(args, target.Path)
+	if command.Profile != nil {
+		firstArgs, err := renderTargetArgs(command.Profile.FirstTarget, targets[0])
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		args = append(args, firstArgs...)
+		for _, target := range targets[1:] {
+			targetArgs, err := renderTargetArgs(command.Profile.RestTarget, target)
+			if err != nil {
+				return errors.Wrap(err)
+			}
+			args = append(args, targetArgs...)
+		}
+	} else {
+		args = append(args, BuildArgs(command.Name, targets[0].Path, targets[0].Line)...)
+		for _, target := range targets[1:] {
+			args = append(args, target.Path)
+		}
 	}
 
 	if err := execx.Run(ctx, "", nil, os.Stdin, os.Stdout, os.Stderr, command.Name, args...); err != nil {
@@ -90,6 +126,44 @@ func Open(ctx context.Context, command Command, targets []Target) error {
 	}
 
 	return nil
+}
+
+func lookupEditor(editors map[string]ummconfig.Editor, name string) (ummconfig.Editor, bool, bool) {
+	if editor, ok := editors[name]; ok {
+		return editor, true, true
+	}
+	base := filepath.Base(name)
+	editor, ok := editors[base]
+	return editor, ok, false
+}
+
+func renderTargetArgs(parts []string, target Target) ([]string, error) {
+	hasLine := target.Line > 0
+	start := 1
+	end := 200
+	lineRange := ":200"
+	if hasLine {
+		start = target.Line - 10
+		if start < 1 {
+			start = 1
+		}
+		end = target.Line + 20
+		lineRange = strconv.Itoa(start) + ":" + strconv.Itoa(end)
+	}
+
+	args, err := ummconfig.RenderArgs(parts, ummconfig.PathTemplateData{
+		Path:      target.Path,
+		Line:      target.Line,
+		HasLine:   hasLine,
+		StartLine: start,
+		EndLine:   end,
+		LineRange: lineRange,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+
+	return args, nil
 }
 
 func splitShellWords(input string) ([]string, error) {

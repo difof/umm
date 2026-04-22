@@ -4,16 +4,20 @@ import (
 	"context"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
-	results, err := Aggregate(ctx, cfg)
+var errCollectLimitReached = errors.New("git result limit reached")
+
+func Query(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, query string, strict bool) ([]resultfmt.Result, error) {
+	results, err := Aggregate(ctx, cfg, appConfig)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -21,8 +25,9 @@ func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) (
 	return filterResults(results, query, strict)
 }
 
-func Aggregate(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Result, error) {
+func Aggregate(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
+	limits := appConfig.Git.Limits
 
 	modeSet := map[string]struct{}{}
 	for _, mode := range cfg.GitModes {
@@ -30,42 +35,42 @@ func Aggregate(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Result, err
 	}
 
 	if _, ok := modeSet["commit"]; ok {
-		items, err := collectCommits(ctx, cfg.Root)
+		items, err := collectCommits(ctx, cfg.Root, limits.Commits)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		results = append(results, items...)
 	}
 	if _, ok := modeSet["branch"]; ok {
-		items, err := collectBranches(ctx, cfg.Root)
+		items, err := collectBranches(ctx, cfg.Root, limits.Branches)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		results = append(results, items...)
 	}
 	if _, ok := modeSet["tags"]; ok {
-		items, err := collectTags(ctx, cfg.Root)
+		items, err := collectTags(ctx, cfg.Root, limits.Tags)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		results = append(results, items...)
 	}
 	if _, ok := modeSet["reflog"]; ok {
-		items, err := collectReflog(ctx, cfg.Root)
+		items, err := collectReflog(ctx, cfg.Root, limits.Reflog)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		results = append(results, items...)
 	}
 	if _, ok := modeSet["stash"]; ok {
-		items, err := collectStashes(ctx, cfg.Root)
+		items, err := collectStashes(ctx, cfg.Root, limits.Stashes)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		results = append(results, items...)
 	}
 	if _, ok := modeSet["tracked"]; ok {
-		items, err := collectTrackedFiles(ctx, cfg.Root)
+		items, err := collectTrackedFiles(ctx, cfg.Root, limits.Tracked)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
@@ -114,14 +119,20 @@ func filterResults(results []resultfmt.Result, query string, strict bool) ([]res
 	return filtered, nil
 }
 
-func collectCommits(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "log", "--format=%H\t%h\t%cs\t%s", "--all")
+func collectCommits(ctx context.Context, root string, limit int) ([]resultfmt.Result, error) {
+	args := []string{"-C", root, "log", "--format=%H\t%h\t%cs\t%s"}
+	if limit > 0 {
+		args = append(args, "-"+strconv.Itoa(limit))
+	}
+	args = append(args, "--all")
+
+	output, err := execx.Output(ctx, root, nil, "git", args...)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 
 	results := []resultfmt.Result{}
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+	for _, line := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
 		if line == "" {
 			continue
 		}
@@ -144,14 +155,20 @@ func collectCommits(ctx context.Context, root string) ([]resultfmt.Result, error
 	return results, nil
 }
 
-func collectBranches(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "for-each-ref", "--format=%(refname:short)\t%(objectname:short)\t%(subject)\t%(HEAD)", "refs/heads", "refs/remotes")
+func collectBranches(ctx context.Context, root string, limit int) ([]resultfmt.Result, error) {
+	args := []string{"-C", root, "for-each-ref"}
+	if limit > 0 {
+		args = append(args, "--count="+strconv.Itoa(limit))
+	}
+	args = append(args, "--format=%(refname:short)\t%(objectname:short)\t%(subject)\t%(HEAD)", "refs/heads", "refs/remotes")
+
+	output, err := execx.Output(ctx, root, nil, "git", args...)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 
 	results := []resultfmt.Result{}
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+	for _, line := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
 		if line == "" {
 			continue
 		}
@@ -184,8 +201,14 @@ func collectBranches(ctx context.Context, root string) ([]resultfmt.Result, erro
 	return results, nil
 }
 
-func collectTags(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "tag", "-l", "--format=%(refname:short)\t%(subject)")
+func collectTags(ctx context.Context, root string, limit int) ([]resultfmt.Result, error) {
+	args := []string{"-C", root, "for-each-ref"}
+	if limit > 0 {
+		args = append(args, "--count="+strconv.Itoa(limit))
+	}
+	args = append(args, "--format=%(refname:short)\t%(subject)", "refs/tags")
+
+	output, err := execx.Output(ctx, root, nil, "git", args...)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -217,8 +240,13 @@ func collectTags(ctx context.Context, root string) ([]resultfmt.Result, error) {
 	return results, nil
 }
 
-func collectReflog(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "reflog", "--format=%gd\t%h\t%gs\t%cr")
+func collectReflog(ctx context.Context, root string, limit int) ([]resultfmt.Result, error) {
+	args := []string{"-C", root, "reflog", "--format=%gd\t%h\t%gs\t%cr"}
+	if limit > 0 {
+		args = append(args, "-n", strconv.Itoa(limit))
+	}
+
+	output, err := execx.Output(ctx, root, nil, "git", args...)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -248,8 +276,13 @@ func collectReflog(ctx context.Context, root string) ([]resultfmt.Result, error)
 	return results, nil
 }
 
-func collectStashes(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "stash", "list", "--format=%gd\t%gs")
+func collectStashes(ctx context.Context, root string, limit int) ([]resultfmt.Result, error) {
+	args := []string{"-C", root, "stash", "list", "--format=%gd\t%gs"}
+	if limit > 0 {
+		args = append(args, "-n", strconv.Itoa(limit))
+	}
+
+	output, err := execx.Output(ctx, root, nil, "git", args...)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -278,19 +311,20 @@ func collectStashes(ctx context.Context, root string) ([]resultfmt.Result, error
 	return results, nil
 }
 
-func collectTrackedFiles(ctx context.Context, root string) ([]resultfmt.Result, error) {
-	output, err := execx.Output(ctx, root, nil, "git", "-C", root, "ls-files")
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-
+func collectTrackedFiles(ctx context.Context, root string, limit int) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
-		if line == "" {
-			continue
+	_, err := execx.StreamLines(ctx, root, nil, nil, "git", []string{"-C", root, "ls-files"}, func(line []byte) error {
+		if limit > 0 && len(results) >= limit {
+			return errCollectLimitReached
 		}
-		path := filepath.Join(root, filepath.FromSlash(line))
-		display := "file:    " + filepath.ToSlash(line)
+
+		value := strings.TrimSpace(string(line))
+		if value == "" {
+			return nil
+		}
+
+		path := filepath.Join(root, filepath.FromSlash(value))
+		display := "file:    " + filepath.ToSlash(value)
 		results = append(results, resultfmt.Result{
 			Kind:        resultfmt.KindGit,
 			PreviewMode: "file",
@@ -298,9 +332,13 @@ func collectTrackedFiles(ctx context.Context, root string) ([]resultfmt.Result, 
 			Path:        path,
 			Repo:        root,
 			GitType:     "tracked",
-			GitRef:      filepath.ToSlash(line),
+			GitRef:      filepath.ToSlash(value),
 			Summary:     display,
 		})
+		return nil
+	})
+	if err != nil && !errors.Is(err, errCollectLimitReached) {
+		return nil, errors.Wrap(err)
 	}
 
 	return results, nil

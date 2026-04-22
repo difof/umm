@@ -11,12 +11,13 @@ import (
 	"strings"
 
 	"github.com/difof/errors"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/deps"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func Run(ctx context.Context, mode string, meta string, out io.Writer) error {
+func Run(ctx context.Context, appConfig ummconfig.Config, mode string, meta string, out io.Writer) error {
 	result, err := resultfmt.DecodeMeta(meta)
 	if err != nil {
 		return errors.Wrap(err)
@@ -24,11 +25,11 @@ func Run(ctx context.Context, mode string, meta string, out io.Writer) error {
 
 	switch mode {
 	case "file":
-		renderFilePreview(ctx, out, result)
+		renderFilePreview(ctx, out, appConfig, result)
 	case "dir":
-		renderDirPreview(out, result)
+		renderDirPreview(ctx, out, appConfig, result)
 	case "diff":
-		renderDiffPreview(ctx, out, result)
+		renderDiffPreview(ctx, out, appConfig, result)
 	default:
 		_, _ = io.WriteString(out, fmt.Sprintf("unknown preview mode: %s\n", mode))
 	}
@@ -36,7 +37,7 @@ func Run(ctx context.Context, mode string, meta string, out io.Writer) error {
 	return nil
 }
 
-func renderFilePreview(ctx context.Context, out io.Writer, result resultfmt.Result) {
+func renderFilePreview(ctx context.Context, out io.Writer, appConfig ummconfig.Config, result resultfmt.Result) {
 	if result.Path == "" {
 		_, _ = io.WriteString(out, "Error: file preview needs a file path\n")
 		return
@@ -44,6 +45,10 @@ func renderFilePreview(ctx context.Context, out io.Writer, result resultfmt.Resu
 
 	if _, err := os.Stat(result.Path); err != nil {
 		_, _ = io.WriteString(out, fmt.Sprintf("Error: Could not preview file %s\n", result.Path))
+		return
+	}
+
+	if tryConfiguredPathPreview(ctx, out, appConfig.Preview.File, result, false) {
 		return
 	}
 
@@ -68,7 +73,7 @@ func renderFilePreview(ctx context.Context, out io.Writer, result resultfmt.Resu
 	renderInternalFile(out, result.Path, result.Line)
 }
 
-func renderDirPreview(out io.Writer, result resultfmt.Result) {
+func renderDirPreview(ctx context.Context, out io.Writer, appConfig ummconfig.Config, result resultfmt.Result) {
 	if result.Path == "" {
 		_, _ = io.WriteString(out, "Error: directory preview needs a directory path\n")
 		return
@@ -77,6 +82,10 @@ func renderDirPreview(out io.Writer, result resultfmt.Result) {
 	info, err := os.Stat(result.Path)
 	if err != nil || !info.IsDir() {
 		_, _ = io.WriteString(out, fmt.Sprintf("Error: Could not preview directory %s\n", result.Path))
+		return
+	}
+
+	if tryConfiguredPathPreview(ctx, out, appConfig.Preview.Tree, result, true) {
 		return
 	}
 
@@ -119,14 +128,19 @@ func renderDirPreview(out io.Writer, result resultfmt.Result) {
 	})
 }
 
-func renderDiffPreview(ctx context.Context, out io.Writer, result resultfmt.Result) {
+func renderDiffPreview(ctx context.Context, out io.Writer, appConfig ummconfig.Config, result resultfmt.Result) {
 	if result.Repo == "" || result.GitType == "" {
 		_, _ = io.WriteString(out, "Error: git preview needs repository metadata\n")
 		return
 	}
 
 	if result.GitType == "branch" {
-		output, err := execx.CombinedOutput(ctx, result.Repo, nil, nil, "git", "-C", result.Repo, "log", "--oneline", "--color=always", "-10", result.GitRef)
+		gitArgs := []string{"-C", result.Repo, "log", "--oneline", "--color=always"}
+		if appConfig.Git.Limits.PreviewBranchCommits > 0 {
+			gitArgs = append(gitArgs, fmt.Sprintf("-%d", appConfig.Git.Limits.PreviewBranchCommits))
+		}
+		gitArgs = append(gitArgs, result.GitRef)
+		output, err := execx.CombinedOutput(ctx, result.Repo, nil, nil, "git", gitArgs...)
 		if err != nil && strings.TrimSpace(output) == "" {
 			_, _ = io.WriteString(out, fmt.Sprintf("Error: Could not show branch %s\n", result.GitRef))
 			return
@@ -163,6 +177,10 @@ func renderDiffPreview(ctx context.Context, out io.Writer, result resultfmt.Resu
 		return
 	}
 
+	if tryConfiguredDiffPreview(ctx, out, appConfig.Preview.Diff, result, raw) {
+		return
+	}
+
 	switch pager {
 	case "delta":
 		if err := execx.Run(ctx, "", nil, bytes.NewReader(raw), out, io.Discard, "delta"); err == nil {
@@ -178,6 +196,84 @@ func renderDiffPreview(ctx context.Context, out io.Writer, result resultfmt.Resu
 	}
 
 	_, _ = out.Write(raw)
+}
+
+func tryConfiguredPathPreview(ctx context.Context, out io.Writer, command ummconfig.Command, result resultfmt.Result, tree bool) bool {
+	if strings.TrimSpace(command.Cmd) == "" {
+		return false
+	}
+	if !deps.Has(command.Cmd) {
+		return false
+	}
+
+	args, err := ummconfig.RenderArgs(command.Args, pathTemplateData(result.Path, result.Line))
+	if err != nil {
+		warnPreviewFallback(out, err.Error())
+		return false
+	}
+	if err := execx.Run(ctx, "", nil, nil, out, io.Discard, command.Cmd, args...); err != nil {
+		kind := "file"
+		if tree {
+			kind = "tree"
+		}
+		warnPreviewFallback(out, fmt.Sprintf("configured %s preview command %q failed", kind, command.Cmd))
+		return false
+	}
+	return true
+}
+
+func tryConfiguredDiffPreview(ctx context.Context, out io.Writer, command ummconfig.Command, result resultfmt.Result, raw []byte) bool {
+	if strings.TrimSpace(command.Cmd) == "" {
+		return false
+	}
+	if !deps.Has(command.Cmd) {
+		return false
+	}
+
+	args, err := ummconfig.RenderArgs(command.Args, ummconfig.DiffTemplateData{
+		Repo:    result.Repo,
+		GitType: result.GitType,
+		GitRef:  result.GitRef,
+		Path:    result.Path,
+		Display: result.Display,
+		Summary: result.Summary,
+	})
+	if err != nil {
+		warnPreviewFallback(out, err.Error())
+		return false
+	}
+	if err := execx.Run(ctx, "", nil, bytes.NewReader(raw), out, io.Discard, command.Cmd, args...); err != nil {
+		warnPreviewFallback(out, fmt.Sprintf("configured diff preview command %q failed", command.Cmd))
+		return false
+	}
+	return true
+}
+
+func pathTemplateData(path string, line int) ummconfig.PathTemplateData {
+	hasLine := line > 0
+	start := 1
+	end := 200
+	lineRange := ":200"
+	if hasLine {
+		start = line - 10
+		if start < 1 {
+			start = 1
+		}
+		end = line + 20
+		lineRange = fmt.Sprintf("%d:%d", start, end)
+	}
+	return ummconfig.PathTemplateData{
+		Path:      path,
+		Line:      line,
+		HasLine:   hasLine,
+		StartLine: start,
+		EndLine:   end,
+		LineRange: lineRange,
+	}
+}
+
+func warnPreviewFallback(out io.Writer, message string) {
+	_, _ = io.WriteString(out, "Warning: "+message+"; falling back to built-in preview\n\n")
 }
 
 func renderInternalFile(out io.Writer, path string, line int) {

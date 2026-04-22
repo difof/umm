@@ -6,6 +6,7 @@ import (
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/app"
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -57,8 +58,15 @@ Use "umm --help" for more information.`,
 func runRootCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
 	defer errors.Recover(&err)
 
-	config := errors.MustResult(cli.NormalizeRootOptions(options))
-	if err := app.RunRoot(cmd.Context(), config); err != nil {
+	loaded := errors.MustResult(ummconfig.LoadEffective())
+	for _, warning := range ummconfig.RuntimeWarnings(loaded.Config) {
+		_, _ = cmd.ErrOrStderr().Write([]byte("warning: " + warning + "\n"))
+	}
+	options.DefaultGitModes = loaded.Config.Git.DefaultModes
+	options.GitModesExplicit = cmd.Flags().Changed("git-mode")
+
+	runtime := errors.MustResult(cli.NormalizeRootOptions(options))
+	if err := app.RunRoot(cmd.Context(), runtime, loaded.Config); err != nil {
 		return errors.Wrap(err)
 	}
 

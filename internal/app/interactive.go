@@ -10,12 +10,13 @@ import (
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/gitsearch"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Result, error) {
+func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -24,6 +25,13 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 	reloadCommand := buildEmitSearchCommand(exe, cfg)
 	previewCommand := shellQuote(exe) + " preview {1} {2}"
 	input := startNormalSearchInput(ctx, exe, cfg)
+	keybindArgs, err := buildBindArgs(appConfig.Keybinds.Normal.Bind, ummconfig.KeybindTemplateData{
+		ReloadCommand:  reloadCommand,
+		PreviewCommand: previewCommand,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
 
 	args := []string{
 		"--ansi",
@@ -35,24 +43,10 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 		"--info=inline",
 		"--preview=" + previewCommand,
 		"--preview-window=top:60%",
-		"--bind", "change:reload:sleep 0.05; " + reloadCommand,
-		"--bind", "ctrl-g:last",
-		"--bind", "ctrl-b:first",
-		"--bind", "alt-g:preview-top",
-		"--bind", "alt-b:preview-bottom",
-		"--bind", "shift-up:preview-up",
-		"--bind", "shift-down:preview-down",
-		"--bind", "alt-u:preview-half-page-up",
-		"--bind", "alt-d:preview-half-page-down",
-		"--bind", "ctrl-u:half-page-up",
-		"--bind", "ctrl-d:half-page-down",
-		"--bind", "ctrl-o:accept",
 	}
+	args = append(args, keybindArgs...)
 	if !cfg.NoMulti {
-		args = append(args,
-			"--multi",
-			"--bind", "tab:toggle+down,shift-tab:toggle+up",
-		)
+		args = append(args, "--multi")
 	}
 
 	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, input, "fzf", args...)
@@ -74,8 +68,8 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.
 	return results, nil
 }
 
-func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Result, bool, error) {
-	results, err := gitsearch.Aggregate(ctx, cfg)
+func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, bool, error) {
+	results, err := gitsearch.Aggregate(ctx, cfg, appConfig)
 	if err != nil {
 		return nil, false, errors.Wrap(err)
 	}
@@ -95,6 +89,10 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 		return nil, false, errors.Wrap(err)
 	}
 	previewCommand := shellQuote(exe) + " preview {1} {2}"
+	keybindArgs, err := buildBindArgs(appConfig.Keybinds.Git.Bind, ummconfig.KeybindTemplateData{PreviewCommand: previewCommand})
+	if err != nil {
+		return nil, false, errors.Wrap(err)
+	}
 
 	args := []string{
 		"--ansi",
@@ -107,24 +105,13 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 		"--query=" + cfg.Pattern,
 		"--preview=" + previewCommand,
 		"--preview-window=top:60%",
-		"--expect=ctrl-o",
-		"--bind", "ctrl-/:toggle-preview",
-		"--bind", "ctrl-g:last",
-		"--bind", "ctrl-b:first",
-		"--bind", "alt-g:preview-top",
-		"--bind", "alt-b:preview-bottom",
-		"--bind", "shift-up:preview-up",
-		"--bind", "shift-down:preview-down",
-		"--bind", "alt-u:preview-half-page-up",
-		"--bind", "alt-d:preview-half-page-down",
-		"--bind", "ctrl-u:half-page-up",
-		"--bind", "ctrl-d:half-page-down",
 	}
+	if len(appConfig.Keybinds.Git.ExpectKeys) > 0 {
+		args = append(args, "--expect="+strings.Join(appConfig.Keybinds.Git.ExpectKeys, ","))
+	}
+	args = append(args, keybindArgs...)
 	if !cfg.NoMulti {
-		args = append(args,
-			"--multi",
-			"--bind", "tab:toggle+down,shift-tab:toggle+up",
-		)
+		args = append(args, "--multi")
 	}
 
 	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, bytes.NewReader(buffer.Bytes()), "fzf", args...)
@@ -141,7 +128,7 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 
 	ctrlO := false
 	parts := strings.SplitN(output, "\n", 2)
-	if len(parts) > 1 && parts[0] == "ctrl-o" {
+	if len(parts) > 1 && contains(appConfig.Keybinds.Git.ExpectKeys, parts[0]) {
 		ctrlO = true
 		output = parts[1]
 	}
@@ -152,6 +139,27 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Res
 	}
 
 	return results, ctrlO, nil
+}
+
+func contains(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
+func buildBindArgs(binds []string, data ummconfig.KeybindTemplateData) ([]string, error) {
+	args := make([]string, 0, len(binds)*2)
+	for _, bind := range binds {
+		rendered, err := ummconfig.RenderString("bind", bind, data)
+		if err != nil {
+			return nil, errors.Wrap(err)
+		}
+		args = append(args, "--bind", rendered)
+	}
+	return args, nil
 }
 
 func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {

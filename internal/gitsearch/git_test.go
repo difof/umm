@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
@@ -25,7 +26,7 @@ func TestAggregateAndQuery(t *testing.T) {
 	runGit(t, root, "stash", "push", "-m", "temp stash")
 
 	cfg := cli.RootConfig{Root: root, GitModes: cli.AllGitModes}
-	results, err := Aggregate(t.Context(), cfg)
+	results, err := Aggregate(t.Context(), cfg, ummconfig.Defaults())
 	if err != nil {
 		t.Fatalf("Aggregate returned error: %v", err)
 	}
@@ -37,12 +38,74 @@ func TestAggregateAndQuery(t *testing.T) {
 	assertHasGitType(t, results, "stash")
 	assertHasGitType(t, results, "tracked")
 
-	filtered, err := Query(t.Context(), cfg, `tag:\s+v1\.0\.0`, true)
+	filtered, err := Query(t.Context(), cfg, ummconfig.Defaults(), `tag:\s+v1\.0\.0`, true)
 	if err != nil {
 		t.Fatalf("Query returned error: %v", err)
 	}
 	if len(filtered) != 1 || filtered[0].GitType != "tag" {
 		t.Fatalf("unexpected filtered results: %#v", filtered)
+	}
+}
+
+func TestAggregateRespectsConfiguredLimits(t *testing.T) {
+	root := t.TempDir()
+	runGit(t, root, "init")
+	runGit(t, root, "config", "user.email", "test@example.com")
+	runGit(t, root, "config", "user.name", "Test User")
+	writeGitFile(t, root, "one.txt", "one\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-m", "one")
+	writeGitFile(t, root, "two.txt", "two\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-m", "two")
+
+	appConfig := ummconfig.Defaults()
+	appConfig.Git.Limits.Commits = 1
+	appConfig.Git.Limits.Tracked = 1
+	cfg := cli.RootConfig{Root: root, GitModes: []string{"commit", "tracked"}}
+
+	results, err := Aggregate(t.Context(), cfg, appConfig)
+	if err != nil {
+		t.Fatalf("Aggregate returned error: %v", err)
+	}
+
+	commits := 0
+	tracked := 0
+	for _, result := range results {
+		switch result.GitType {
+		case "commit":
+			commits++
+		case "tracked":
+			tracked++
+		}
+	}
+	if commits != 1 || tracked != 1 {
+		t.Fatalf("unexpected limited counts: commits=%d tracked=%d results=%#v", commits, tracked, results)
+	}
+}
+
+func TestAggregateRespectsBranchLimit(t *testing.T) {
+	root := t.TempDir()
+	runGit(t, root, "init")
+	runGit(t, root, "config", "user.email", "test@example.com")
+	runGit(t, root, "config", "user.name", "Test User")
+	writeGitFile(t, root, "tracked.txt", "hello\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-m", "initial")
+	runGit(t, root, "checkout", "-b", "feature/a")
+	runGit(t, root, "checkout", "-b", "feature/b")
+	runGit(t, root, "checkout", "master")
+
+	appConfig := ummconfig.Defaults()
+	appConfig.Git.Limits.Branches = 1
+	cfg := cli.RootConfig{Root: root, GitModes: []string{"branch"}}
+
+	results, err := Aggregate(t.Context(), cfg, appConfig)
+	if err != nil {
+		t.Fatalf("Aggregate returned error: %v", err)
+	}
+	if len(results) != 1 || results[0].GitType != "branch" {
+		t.Fatalf("expected one limited branch result, got %#v", results)
 	}
 }
 

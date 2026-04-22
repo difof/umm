@@ -3,6 +3,7 @@ package umm
 import (
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/app"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +24,11 @@ func BuildPreviewCmd() *cobra.Command {
 func runPreviewCmd(cmd *cobra.Command, mode string, meta string) (err error) {
 	defer errors.Recover(&err)
 
-	if err := app.RunPreview(cmd.Context(), mode, meta, cmd.OutOrStdout()); err != nil {
+	loaded := errors.MustResult(ummconfig.LoadEffective())
+	for _, warning := range ummconfig.RuntimeWarnings(loaded.Config) {
+		_, _ = cmd.ErrOrStderr().Write([]byte("warning: " + warning + "\n"))
+	}
+	if err := app.RunPreview(cmd.Context(), loaded.Config, mode, meta, cmd.OutOrStdout()); err != nil {
 		return errors.Wrap(err)
 	}
 
