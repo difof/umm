@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/deps"
 	"github.com/difof/umm/internal/resultfmt"
 )
@@ -62,8 +63,22 @@ func TestBuildEmitArgs(t *testing.T) {
 	}
 }
 
+func TestBuildBindArgsRendersTemplates(t *testing.T) {
+	args, err := buildBindArgs([]string{"change:reload:sleep 0.05; {{.ReloadCommand}}", "ctrl-o:execute({{.PreviewCommand}})"}, ummconfig.KeybindTemplateData{
+		ReloadCommand:  "umm __emit-search --pattern {q}",
+		PreviewCommand: "umm preview {1} {2}",
+	})
+	if err != nil {
+		t.Fatalf("buildBindArgs returned error: %v", err)
+	}
+	want := []string{"--bind", "change:reload:sleep 0.05; umm __emit-search --pattern {q}", "--bind", "ctrl-o:execute(umm preview {1} {2})"}
+	if !slices.Equal(args, want) {
+		t.Fatalf("buildBindArgs() = %#v, want %#v", args, want)
+	}
+}
+
 func TestRunGitNoUISystemRequiresTrackedFiles(t *testing.T) {
-	err := runGitNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, []resultfmt.Result{{GitType: "commit", GitRef: "abc"}})
+	err := runGitNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{GitType: "commit", GitRef: "abc"}})
 	if err == nil || !strings.Contains(err.Error(), "no tracked file results available") {
 		t.Fatalf("runGitNoUI() error = %v, want tracked-file error", err)
 	}
@@ -77,7 +92,7 @@ func TestRunNormalNoUIAskRoutesToStat(t *testing.T) {
 
 	results := []resultfmt.Result{{Path: first}, {Path: second}}
 	output := captureStdout(t, func() {
-		if err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionAsk}, results); err != nil {
+		if err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionAsk}, ummconfig.Defaults(), results); err != nil {
 			t.Fatalf("runNormalNoUI() returned error: %v", err)
 		}
 	})
@@ -100,7 +115,7 @@ func TestRunNormalNoUISystemUsesFirstResult(t *testing.T) {
 		t.Fatalf("Setenv PATH: %v", err)
 	}
 
-	err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, []resultfmt.Result{{Path: first}, {Path: second}})
+	err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}})
 	if err != nil {
 		t.Fatalf("runNormalNoUI() returned error: %v", err)
 	}
@@ -132,7 +147,7 @@ func TestRunRootNormalNoUIIntegration(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		if err := RunRoot(t.Context(), cfg); err != nil {
+		if err := RunRoot(t.Context(), cfg, ummconfig.Defaults()); err != nil {
 			t.Fatalf("RunRoot() returned error: %v", err)
 		}
 	})
@@ -165,7 +180,7 @@ func TestRunRootGitNoUIIntegration(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		if err := RunRoot(t.Context(), cfg); err != nil {
+		if err := RunRoot(t.Context(), cfg, ummconfig.Defaults()); err != nil {
 			t.Fatalf("RunRoot() returned error: %v", err)
 		}
 	})
