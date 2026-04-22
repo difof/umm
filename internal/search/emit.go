@@ -41,7 +41,7 @@ func emitContent(ctx context.Context, cfg cli.RootConfig, query string, strict b
 	if cfg.Hidden {
 		args = append(args, "--hidden", "--no-ignore")
 	}
-	args = append(args, query, cfg.Root)
+	args = append(args, "-e", query, "--", cfg.Root)
 
 	stderr, err := execx.StreamLines(ctx, cfg.Root, nil, nil, "rg", args, func(line []byte) error {
 		trimmedLine := strings.TrimSpace(string(line))
