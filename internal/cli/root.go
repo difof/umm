@@ -53,21 +53,23 @@ var validStatModes = map[StatMode]struct{}{
 }
 
 type RawRootOptions struct {
-	Root         string
-	Pattern      string
-	Excludes     []string
-	Hidden       bool
-	NoFilename   bool
-	OnlyFilename bool
-	OnlyDirname  bool
-	Git          bool
-	GitModes     []string
-	MaxDepth     uint
-	NoUI         bool
-	NoMulti      bool
-	OpenAsk      bool
-	OpenSys      bool
-	OnlyStat     string
+	Root             string
+	Pattern          string
+	Excludes         []string
+	Hidden           bool
+	NoFilename       bool
+	OnlyFilename     bool
+	OnlyDirname      bool
+	Git              bool
+	GitModes         []string
+	MaxDepth         uint
+	NoUI             bool
+	NoMulti          bool
+	OpenAsk          bool
+	OpenSys          bool
+	OnlyStat         string
+	DefaultGitModes  []string
+	GitModesExplicit bool
 }
 
 type RootConfig struct {
@@ -137,7 +139,11 @@ func normalize(raw RawRootOptions) (cfg RootConfig, err error) {
 		return cfg, errors.Newf("root path is not a directory: %s", root)
 	}
 
-	gitModes := errors.MustResult(parseGitModes(raw.GitModes))
+	defaultGitModes := raw.DefaultGitModes
+	if len(defaultGitModes) == 0 {
+		defaultGitModes = AllGitModes
+	}
+	gitModes := errors.MustResult(parseGitModes(raw.GitModes, defaultGitModes, raw.GitModesExplicit))
 	if raw.Git {
 		if len(raw.Excludes) > 0 {
 			return cfg, errors.New("--exclude cannot be used with --git")
@@ -207,10 +213,10 @@ func normalize(raw RawRootOptions) (cfg RootConfig, err error) {
 	return cfg, nil
 }
 
-func parseGitModes(raw []string) ([]string, error) {
-	if len(raw) == 0 {
-		modes := make([]string, len(AllGitModes))
-		copy(modes, AllGitModes)
+func parseGitModes(raw []string, defaults []string, explicit bool) ([]string, error) {
+	if len(raw) == 0 && !explicit {
+		modes := make([]string, len(defaults))
+		copy(modes, defaults)
 		return modes, nil
 	}
 
@@ -234,8 +240,8 @@ func parseGitModes(raw []string) ([]string, error) {
 	}
 
 	if len(modes) == 0 {
-		modes = make([]string, len(AllGitModes))
-		copy(modes, AllGitModes)
+		modes = make([]string, len(defaults))
+		copy(modes, defaults)
 	}
 
 	return modes, nil
