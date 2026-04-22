@@ -35,14 +35,18 @@ func Resolve(appConfig ummconfig.Config) (Command, error) {
 		return Command{}, errors.Wrap(err)
 	}
 
-	profile, ok := lookupEditor(appConfig.Editors, parsed.Name)
+	profile, ok, exact := lookupEditor(appConfig.Editors, parsed.Name)
 	if !ok {
 		return parsed, nil
 	}
 
 	resolved := profile
+	name := resolved.Cmd
+	if !exact {
+		name = parsed.Name
+	}
 	return Command{
-		Name:    resolved.Cmd,
+		Name:    name,
 		Args:    append(append([]string(nil), parsed.Args...), resolved.Args...),
 		Profile: &resolved,
 	}, nil
@@ -124,13 +128,13 @@ func Open(ctx context.Context, command Command, targets []Target) error {
 	return nil
 }
 
-func lookupEditor(editors map[string]ummconfig.Editor, name string) (ummconfig.Editor, bool) {
+func lookupEditor(editors map[string]ummconfig.Editor, name string) (ummconfig.Editor, bool, bool) {
 	if editor, ok := editors[name]; ok {
-		return editor, true
+		return editor, true, true
 	}
 	base := filepath.Base(name)
 	editor, ok := editors[base]
-	return editor, ok
+	return editor, ok, false
 }
 
 func renderTargetArgs(parts []string, target Target) ([]string, error) {
