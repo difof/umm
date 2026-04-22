@@ -118,6 +118,82 @@ const defaultFileHeader = `# umm configuration
 # This file is optional. When omitted, umm uses the same defaults shown here.
 # Built-in editor profiles already cover common editors such as nvim, vim, vi, nano,
 # micro, emacs, emacsclient, code, cursor, agy, subl, and sublime_text.
+#
+# Config semantics:
+# - git.default-modes applies only when --git is set and --git-mode was not passed.
+# - all git limit fields use 0 to mean unlimited.
+# - keybinds.normal.bind and keybinds.git.bind replace the built-in bind lists.
+# - keybinds.git.expect-keys is passed to fzf --expect for direct-open style keys.
+# - expect-keys takes precedence over bind when the same key appears in both places.
+# - preview.file/diff/tree run custom commands first; if missing or failing, umm warns
+#   once at command startup and then falls back to the built-in preview flow.
+#
+# Supported template variables:
+# - editors first-target/rest-target, preview.file args, preview.tree args:
+#   Path, Line, HasLine, StartLine, EndLine, LineRange
+# - preview.diff args:
+#   Repo, GitType, GitRef, Path, Display, Summary
+# - keybinds bind entries:
+#   ReloadCommand, PreviewCommand
+#
+# Keybind syntax:
+# - bind entries use raw fzf syntax exactly: KEY:ACTION, EVENT:ACTION, or chains such as
+#   KEY:ACTION+ACTION. Nested actions like reload(...), execute(...), preview(...),
+#   change-preview-window(...), transform(...), and become(...) are supported.
+# - expect-keys uses the same key names accepted by fzf --expect.
+#
+# Key names accepted by fzf include:
+# - any single character
+# - ctrl-<char>, alt-<char>
+# - alt-up, alt-down, alt-left, alt-right, alt-enter, alt-space,
+#   alt-backspace (alt-bspace, alt-bs)
+# - tab, shift-tab (btab), esc, del/delete, up, down, left, right, home, end,
+#   insert, page-up (pgup), page-down (pgdn)
+# - shift-up, shift-down, shift-left, shift-right, shift-delete
+# - alt-shift-up, alt-shift-down, alt-shift-left, alt-shift-right
+# - left-click, right-click, double-click, scroll-up, scroll-down,
+#   preview-scroll-up, preview-scroll-down, shift-left-click, shift-right-click,
+#   shift-scroll-up, shift-scroll-down
+#
+# Events accepted by fzf include:
+# - start, load, resize, result, change, focus, multi, one, zero,
+#   backward-eof, jump, jump-cancel, click-header
+#
+# Actions accepted by fzf include:
+# - abort, accept, accept-non-empty, accept-or-print-query
+# - backward-char, backward-delete-char, backward-delete-char/eof,
+#   backward-kill-word, backward-word
+# - become(...), beginning-of-line, bell, cancel
+# - change-border-label(...), change-ghost(...), change-header(...),
+#   change-header-label(...), change-input-label(...), change-list-label(...),
+#   change-multi, change-multi(...), change-nth(...), change-pointer(...),
+#   change-preview(...), change-preview-label(...), change-preview-window(...),
+#   change-prompt(...), change-query(...)
+# - clear-screen, clear-multi, clear-query, close
+# - delete-char, delete-char/eof, deselect, deselect-all, disable-search,
+#   down, enable-search, end-of-line, exclude, exclude-multi
+# - execute(...), execute-silent(...), first, forward-char, forward-word, ignore,
+#   jump, kill-line, kill-word, last, next-history, next-selected
+# - page-down, page-up, half-page-down, half-page-up
+# - hide-header, hide-input, hide-preview
+# - offset-down, offset-up, offset-middle, pos(...)
+# - prev-history, prev-selected, preview(...), preview-down, preview-up,
+#   preview-page-down, preview-page-up, preview-half-page-down,
+#   preview-half-page-up, preview-bottom, preview-top
+# - print(...), put, put(...), refresh-preview, rebind(...), reload(...),
+#   reload-sync(...), replace-query, search(...), select, select-all,
+#   show-header, show-input, show-preview
+# - toggle, toggle-all, toggle-bind, toggle-header, toggle-hscroll, toggle-input,
+#   toggle-in, toggle-multi-line, toggle-out, toggle-preview,
+#   toggle-preview-wrap, toggle-search, toggle-sort, toggle-track,
+#   toggle-track-current, toggle-wrap, toggle+down, toggle+up
+# - track-current, transform(...), transform-border-label(...),
+#   transform-ghost(...), transform-header(...), transform-header-label(...),
+#   transform-input-label(...), transform-list-label(...), transform-nth(...),
+#   transform-pointer(...), transform-preview-label(...), transform-prompt(...),
+#   transform-query(...), transform-search(...)
+# - unbind(...), unix-line-discard, unix-word-rubout, untrack-current, up, yank
+# - each transform* action also has a matching bg-transform* variant in fzf
 
 `
 
@@ -153,6 +229,23 @@ const defaultFileExamples = `# Define custom editor aliases here when built-in e
 #     args:
 #       - --tree
 #       - '{{.Path}}'
+
+# Example keybind overrides:
+# keybinds:
+#   normal:
+#     bind:
+#       - 'change:reload:sleep 0.05; {{.ReloadCommand}}'
+#       - 'ctrl-/:change-preview-window(right,70%|down,40%,border-horizontal|hidden|right)'
+#       - 'ctrl-y:execute-silent(echo {} | pbcopy)'
+#       - 'ctrl-o:accept'
+#   git:
+#     expect-keys:
+#       - ctrl-o
+#       - alt-enter
+#     bind:
+#       - 'ctrl-/:toggle-preview'
+#       - 'ctrl-r:reload({{.ReloadCommand}})'
+#       - 'tab:toggle+down,shift-tab:toggle+up'
 `
 
 func mergeIntoDefaults(raw RawConfig) Config {
