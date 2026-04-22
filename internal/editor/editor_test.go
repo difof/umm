@@ -1,8 +1,12 @@
 package editor
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
+
+	ummconfig "github.com/difof/umm/internal/config"
 )
 
 func TestBuildArgs(t *testing.T) {
@@ -59,4 +63,64 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolve(t *testing.T) {
+	t.Run("preserves explicit editor path for basename profile matches", func(t *testing.T) {
+		editorPath := filepath.Join(t.TempDir(), "nvim")
+		old := os.Getenv("EDITOR")
+		t.Cleanup(func() {
+			if old == "" {
+				_ = os.Unsetenv("EDITOR")
+				return
+			}
+			_ = os.Setenv("EDITOR", old)
+		})
+		if err := os.Setenv("EDITOR", editorPath+" --clean"); err != nil {
+			t.Fatalf("Setenv EDITOR: %v", err)
+		}
+
+		cmd, err := Resolve(ummconfig.Defaults())
+		if err != nil {
+			t.Fatalf("Resolve returned error: %v", err)
+		}
+		if cmd.Name != editorPath {
+			t.Fatalf("Resolve() name = %q, want %q", cmd.Name, editorPath)
+		}
+		if !reflect.DeepEqual(cmd.Args, []string{"--clean"}) {
+			t.Fatalf("Resolve() args = %#v, want %#v", cmd.Args, []string{"--clean"})
+		}
+		if cmd.Profile == nil {
+			t.Fatal("expected built-in profile to still be applied")
+		}
+	})
+
+	t.Run("exact editor aliases still resolve to configured command", func(t *testing.T) {
+		old := os.Getenv("EDITOR")
+		t.Cleanup(func() {
+			if old == "" {
+				_ = os.Unsetenv("EDITOR")
+				return
+			}
+			_ = os.Setenv("EDITOR", old)
+		})
+		if err := os.Setenv("EDITOR", "my-editor --wait"); err != nil {
+			t.Fatalf("Setenv EDITOR: %v", err)
+		}
+
+		cfg := ummconfig.Defaults()
+		cfg.Editors["my-editor"] = ummconfig.Editor{Cmd: "actual-editor", Args: []string{"--foreground"}}
+
+		cmd, err := Resolve(cfg)
+		if err != nil {
+			t.Fatalf("Resolve returned error: %v", err)
+		}
+		if cmd.Name != "actual-editor" {
+			t.Fatalf("Resolve() name = %q, want %q", cmd.Name, "actual-editor")
+		}
+		wantArgs := []string{"--wait", "--foreground"}
+		if !reflect.DeepEqual(cmd.Args, wantArgs) {
+			t.Fatalf("Resolve() args = %#v, want %#v", cmd.Args, wantArgs)
+		}
+	})
 }
