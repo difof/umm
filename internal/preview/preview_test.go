@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
@@ -35,7 +36,7 @@ func TestRunFileAndDirPreview(t *testing.T) {
 		t.Fatalf("EncodeMeta file: %v", err)
 	}
 	var fileOut bytes.Buffer
-	if err := Run(t.Context(), "file", fileMeta, &fileOut); err != nil {
+	if err := Run(t.Context(), ummconfig.Defaults(), "file", fileMeta, &fileOut); err != nil {
 		t.Fatalf("Run file preview returned error: %v", err)
 	}
 	if !strings.Contains(fileOut.String(), "two") {
@@ -47,7 +48,7 @@ func TestRunFileAndDirPreview(t *testing.T) {
 		t.Fatalf("EncodeMeta dir: %v", err)
 	}
 	var dirOut bytes.Buffer
-	if err := Run(t.Context(), "dir", dirMeta, &dirOut); err != nil {
+	if err := Run(t.Context(), ummconfig.Defaults(), "dir", dirMeta, &dirOut); err != nil {
 		t.Fatalf("Run dir preview returned error: %v", err)
 	}
 	if !strings.Contains(dirOut.String(), "child.txt") {
@@ -88,7 +89,7 @@ func TestRunDiffPreview(t *testing.T) {
 		t.Fatalf("EncodeMeta diff: %v", err)
 	}
 	var out bytes.Buffer
-	if err := Run(t.Context(), "diff", meta, &out); err != nil {
+	if err := Run(t.Context(), ummconfig.Defaults(), "diff", meta, &out); err != nil {
 		t.Fatalf("Run diff preview returned error: %v", err)
 	}
 	if !strings.Contains(out.String(), "initial commit") {
@@ -115,7 +116,7 @@ func TestRunFilePreviewWithLongLine(t *testing.T) {
 		t.Fatalf("EncodeMeta file: %v", err)
 	}
 	var out bytes.Buffer
-	if err := Run(t.Context(), "file", meta, &out); err != nil {
+	if err := Run(t.Context(), ummconfig.Defaults(), "file", meta, &out); err != nil {
 		t.Fatalf("Run file preview returned error: %v", err)
 	}
 	if !strings.Contains(out.String(), strings.Repeat("x", 64)) {
@@ -150,7 +151,7 @@ func TestRunFilePreviewDoesNotFallBackToCat(t *testing.T) {
 		t.Fatalf("EncodeMeta file: %v", err)
 	}
 	var out bytes.Buffer
-	if err := Run(t.Context(), "file", meta, &out); err != nil {
+	if err := Run(t.Context(), ummconfig.Defaults(), "file", meta, &out); err != nil {
 		t.Fatalf("Run file preview returned error: %v", err)
 	}
 
@@ -160,6 +161,175 @@ func TestRunFilePreviewDoesNotFallBackToCat(t *testing.T) {
 	}
 	if strings.Contains(text, "260") {
 		t.Fatalf("expected preview to be capped before line 260, got %q", text)
+	}
+}
+
+func TestRunUsesConfiguredFilePreviewCommand(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(file, []byte("hello\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	shimDir := t.TempDir()
+	writeExecutable(t, filepath.Join(shimDir, "preview-file"), "#!/bin/sh\nprintf 'CUSTOM FILE %s\\n' \"$1\"\n")
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	if err := os.Setenv("PATH", shimDir); err != nil {
+		t.Fatalf("Setenv PATH: %v", err)
+	}
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Path: file, Line: 1})
+	if err != nil {
+		t.Fatalf("EncodeMeta file: %v", err)
+	}
+	appConfig := ummconfig.Defaults()
+	appConfig.Preview.File = ummconfig.Command{Cmd: "preview-file", Args: []string{"{{.Path}}"}}
+
+	var out bytes.Buffer
+	if err := Run(t.Context(), appConfig, "file", meta, &out); err != nil {
+		t.Fatalf("Run file preview returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "CUSTOM FILE "+file) {
+		t.Fatalf("expected custom preview output, got %q", out.String())
+	}
+}
+
+func TestRunFallsBackWhenConfiguredPreviewCommandIsMissing(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(file, []byte("hello\nworld\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	if err := os.Setenv("PATH", t.TempDir()); err != nil {
+		t.Fatalf("Setenv PATH: %v", err)
+	}
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Path: file, Line: 2})
+	if err != nil {
+		t.Fatalf("EncodeMeta file: %v", err)
+	}
+	appConfig := ummconfig.Defaults()
+	appConfig.Preview.File = ummconfig.Command{Cmd: "missing-preview", Args: []string{"{{.Path}}"}}
+
+	var out bytes.Buffer
+	if err := Run(t.Context(), appConfig, "file", meta, &out); err != nil {
+		t.Fatalf("Run file preview returned error: %v", err)
+	}
+	text := out.String()
+	if strings.Contains(text, "Warning:") || !strings.Contains(text, "world") {
+		t.Fatalf("expected silent fallback preview content, got %q", text)
+	}
+}
+
+func TestRunUsesConfiguredTreePreviewCommand(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "dir")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	shimDir := t.TempDir()
+	writeExecutable(t, filepath.Join(shimDir, "preview-tree"), "#!/bin/sh\nprintf 'TREE %s\\n' \"$1\"\n")
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	if err := os.Setenv("PATH", shimDir); err != nil {
+		t.Fatalf("Setenv PATH: %v", err)
+	}
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Path: dir})
+	if err != nil {
+		t.Fatalf("EncodeMeta dir: %v", err)
+	}
+	appConfig := ummconfig.Defaults()
+	appConfig.Preview.Tree = ummconfig.Command{Cmd: "preview-tree", Args: []string{"{{.Path}}"}}
+
+	var out bytes.Buffer
+	if err := Run(t.Context(), appConfig, "dir", meta, &out); err != nil {
+		t.Fatalf("Run dir preview returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "TREE "+dir) {
+		t.Fatalf("expected custom tree preview output, got %q", out.String())
+	}
+}
+
+func TestRunUsesConfiguredDiffPreviewCommand(t *testing.T) {
+	root := t.TempDir()
+	runGit(t, root, "init")
+	runGit(t, root, "config", "user.email", "test@example.com")
+	runGit(t, root, "config", "user.name", "Test User")
+	file := filepath.Join(root, "tracked.txt")
+	if err := os.WriteFile(file, []byte("hello\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-m", "initial commit")
+	commit := strings.TrimSpace(runGitOutput(t, root, "rev-parse", "HEAD"))
+	shimDir := t.TempDir()
+	writeExecutable(t, filepath.Join(shimDir, "preview-diff"), "#!/bin/sh\ncat\n")
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatalf("LookPath git: %v", err)
+	}
+	writeExecutable(t, filepath.Join(shimDir, "git"), "#!/bin/sh\nexec \""+gitPath+"\" \"$@\"\n")
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	if err := os.Setenv("PATH", shimDir); err != nil {
+		t.Fatalf("Setenv PATH: %v", err)
+	}
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Repo: root, GitType: "commit", GitRef: commit})
+	if err != nil {
+		t.Fatalf("EncodeMeta diff: %v", err)
+	}
+	appConfig := ummconfig.Defaults()
+	appConfig.Preview.Diff = ummconfig.Command{Cmd: "preview-diff", Args: []string{}}
+
+	var out bytes.Buffer
+	if err := Run(t.Context(), appConfig, "diff", meta, &out); err != nil {
+		t.Fatalf("Run diff preview returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "initial commit") {
+		t.Fatalf("expected custom diff output from stdin, got %q", out.String())
+	}
+}
+
+func TestRunDiffPreviewUsesConfiguredBranchLimit(t *testing.T) {
+	root := t.TempDir()
+	runGit(t, root, "init")
+	runGit(t, root, "config", "user.email", "test@example.com")
+	runGit(t, root, "config", "user.name", "Test User")
+	file := filepath.Join(root, "tracked.txt")
+	if err := os.WriteFile(file, []byte("one\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-m", "one")
+	if err := os.WriteFile(file, []byte("two\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	runGit(t, root, "commit", "-am", "two")
+	if err := os.WriteFile(file, []byte("three\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	runGit(t, root, "commit", "-am", "three")
+	runGit(t, root, "checkout", "-b", "feature")
+
+	meta, err := resultfmt.EncodeMeta(resultfmt.Result{Repo: root, GitType: "branch", GitRef: "feature"})
+	if err != nil {
+		t.Fatalf("EncodeMeta diff: %v", err)
+	}
+	appConfig := ummconfig.Defaults()
+	appConfig.Git.Limits.PreviewBranchCommits = 1
+
+	var out bytes.Buffer
+	if err := Run(t.Context(), appConfig, "diff", meta, &out); err != nil {
+		t.Fatalf("Run diff preview returned error: %v", err)
+	}
+	text := strings.TrimSpace(out.String())
+	lines := strings.Split(text, "\n")
+	if len(lines) != 1 || !strings.Contains(lines[0], "three") {
+		t.Fatalf("expected only one branch commit preview line, got %q", text)
 	}
 }
 
@@ -182,4 +352,11 @@ func runGitOutput(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, output)
 	}
 	return string(output)
+}
+
+func writeExecutable(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+		t.Fatalf("WriteFile(%q): %v", path, err)
+	}
 }
