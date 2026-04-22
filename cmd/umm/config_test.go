@@ -55,6 +55,9 @@ func TestConfigDumpCreatesDefaults(t *testing.T) {
 	if !strings.Contains(text, "# editors:") || !strings.Contains(text, "# preview:") {
 		t.Fatalf("expected commented examples in dumped config, got %q", text)
 	}
+	if !strings.Contains(text, "LineRange") || !strings.Contains(text, "ReloadCommand") || !strings.Contains(text, "toggle-preview") {
+		t.Fatalf("expected inline config reference comments, got %q", text)
+	}
 	if strings.Contains(text, "editors:\n  nvim:") {
 		t.Fatalf("expected concise starter config, got %q", text)
 	}
