@@ -37,6 +37,32 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("content search accepts single-dash patterns", func(t *testing.T) {
+		writeFile(t, filepath.Join(root, "dash.txt"), "-foo line\n")
+
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		results, err := Query(t.Context(), cfg, "-foo", true)
+		if err != nil {
+			t.Fatalf("Query returned error: %v", err)
+		}
+		if len(results) == 0 {
+			t.Fatal("expected single-dash content result")
+		}
+	})
+
+	t.Run("content search accepts double-dash patterns", func(t *testing.T) {
+		writeFile(t, filepath.Join(root, "double-dash.txt"), "--help text\n")
+
+		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		results, err := Query(t.Context(), cfg, "--help", true)
+		if err != nil {
+			t.Fatalf("Query returned error: %v", err)
+		}
+		if len(results) == 0 {
+			t.Fatal("expected double-dash content result")
+		}
+	})
+
 	t.Run("filename search finds file path only", func(t *testing.T) {
 		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename}
 		results, err := Query(t.Context(), cfg, "root\\.go", true)
