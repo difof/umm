@@ -8,12 +8,13 @@ import (
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
-	results, err := Aggregate(ctx, cfg)
+func Query(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, query string, strict bool) ([]resultfmt.Result, error) {
+	results, err := Aggregate(ctx, cfg, appConfig)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -21,8 +22,9 @@ func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) (
 	return filterResults(results, query, strict)
 }
 
-func Aggregate(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Result, error) {
+func Aggregate(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
+	limits := appConfig.Git.Limits
 
 	modeSet := map[string]struct{}{}
 	for _, mode := range cfg.GitModes {
@@ -34,45 +36,52 @@ func Aggregate(ctx context.Context, cfg cli.RootConfig) ([]resultfmt.Result, err
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		results = append(results, items...)
+		results = append(results, limitResults(items, limits.Commits)...)
 	}
 	if _, ok := modeSet["branch"]; ok {
 		items, err := collectBranches(ctx, cfg.Root)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		results = append(results, items...)
+		results = append(results, limitResults(items, limits.Branches)...)
 	}
 	if _, ok := modeSet["tags"]; ok {
 		items, err := collectTags(ctx, cfg.Root)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		results = append(results, items...)
+		results = append(results, limitResults(items, limits.Tags)...)
 	}
 	if _, ok := modeSet["reflog"]; ok {
 		items, err := collectReflog(ctx, cfg.Root)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		results = append(results, items...)
+		results = append(results, limitResults(items, limits.Reflog)...)
 	}
 	if _, ok := modeSet["stash"]; ok {
 		items, err := collectStashes(ctx, cfg.Root)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		results = append(results, items...)
+		results = append(results, limitResults(items, limits.Stashes)...)
 	}
 	if _, ok := modeSet["tracked"]; ok {
 		items, err := collectTrackedFiles(ctx, cfg.Root)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		results = append(results, items...)
+		results = append(results, limitResults(items, limits.Tracked)...)
 	}
 
 	return results, nil
+}
+
+func limitResults(results []resultfmt.Result, limit int) []resultfmt.Result {
+	if limit <= 0 || len(results) <= limit {
+		return results
+	}
+	return results[:limit]
 }
 
 func ValidateRepo(ctx context.Context, root string) error {
