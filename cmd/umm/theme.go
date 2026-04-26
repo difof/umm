@@ -46,6 +46,12 @@ type themeFieldDoc struct {
 	Path   string
 	What   string
 	Values string
+	Extra  []themeFieldExtra
+}
+
+type themeFieldExtra struct {
+	Label string
+	Text  string
 }
 
 func buildThemeHelpBlock(out io.Writer) string {
@@ -76,8 +82,11 @@ func buildThemeHelpBlock(out io.Writer) string {
 			style.field(doc.Path),
 			style.label("what:")+" "+doc.What,
 			style.label("values:")+" "+doc.Values,
-			"",
 		)
+		for _, extra := range doc.Extra {
+			lines = append(lines, style.label(extra.Label+": ")+extra.Text)
+		}
+		lines = append(lines, "")
 	}
 
 	return strings.Join(lines, "\n")
@@ -168,7 +177,17 @@ func themeFieldDocs() []themeFieldDoc {
 		{Path: "fzf.preview-wrap-sign", What: "Sets the continuation marker for wrapped preview lines.", Values: "optional string; one or more visible characters."},
 		{Path: "fzf.preview-window", What: "Controls preview position, size, border mode, wrapping, and other preview window behavior.", Values: "optional string; raw fzf preview-window syntax such as top:60%, right,50%,border-left, up,30%,wrap, or hidden."},
 		{Path: "fzf.color.base", What: "Sets the base fzf color scheme before explicit color entries are applied.", Values: enumValues(ummtheme.BaseColorDark, ummtheme.BaseColorLight, ummtheme.BaseColorBase16, ummtheme.BaseColor16, ummtheme.BaseColorBW)},
-		{Path: "fzf.color.entries", What: "Overrides specific fzf color namespaces after the base scheme is applied.", Values: "optional string map; values are raw fzf color payloads like #62ff94, 123, bold:#62ff94, or other local fzf color forms; supported keys: " + strings.Join(validThemeColorEntryKeys(), ", ") + "."},
+		{Path: "fzf.color.entries", What: "YAML map of individual fzf UI color slots to color specs after the base scheme is applied.", Values: "optional mapping; format is <slot>: <color-spec>, where the slot names the UI element and the color spec is raw fzf color syntax such as #62ff94, 123, or bold:#62ff94.", Extra: colorEntriesHelpExtras()},
+	}
+}
+
+func colorEntriesHelpExtras() []themeFieldExtra {
+	return []themeFieldExtra{
+		{Label: "example", Text: `fg: "#62ff94", bg: "#0a0e0a", prompt: "bold:#2eff6a", preview-border: "#8ca391"`},
+		{Label: "slots", Text: "main/text: fg, bg, fg+, bg+, hl, hl+, nth, query, current-fg, current-bg, current-hl, selected-fg, selected-bg, selected-hl, disabled, nomatch."},
+		{Label: "slots", Text: "chrome: prompt, pointer, marker, spinner, separator, scrollbar, gap-line, border, label, gutter, alt-gutter, alt-bg, ghost."},
+		{Label: "slots", Text: "panes: list-bg, list-fg, list-border, list-label, input-bg, input-fg, input-border, input-label, header, header-bg, header-fg, header-border, header-label, footer, footer-bg, footer-fg, footer-border, footer-label, preview-bg, preview-fg, preview-border, preview-label, preview-scrollbar."},
+		{Label: "all keys", Text: strings.Join(validThemeColorEntryKeys(), ", ") + "."},
 	}
 }
 
