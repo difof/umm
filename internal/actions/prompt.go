@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -15,17 +16,17 @@ import (
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result, isGit bool) error {
+func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result, isGit bool, in io.Reader, out io.Writer, errOut io.Writer) error {
 	items := buildPromptItems(results, isGit)
 	if len(items) == 0 {
 		return errors.New("no actions are available for the selected results")
 	}
 
-	if _, err := fmt.Fprintln(os.Stderr, promptSelectionSummary(results, isGit)); err != nil {
+	if _, err := fmt.Fprintln(errOut, promptSelectionSummary(results, isGit)); err != nil {
 		return errors.Wrap(err)
 	}
 
-	choice, err := promptChoice(items)
+	choice, err := promptChoice(items, in, errOut)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -39,7 +40,7 @@ func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []res
 		} else {
 			targets = editorCompatible(results)
 		}
-		return OpenInEditor(ctx, appConfig, targets)
+		return OpenInEditor(ctx, appConfig, targets, in, out, errOut)
 	case "system":
 		targets := results
 		if isGit {
@@ -48,23 +49,23 @@ func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []res
 		return OpenWithSystem(ctx, targets)
 	case "stat":
 		if isGit {
-			return RenderGitStats(os.Stdout, results)
+			return RenderGitStats(out, results)
 		}
-		return RenderPathStats(os.Stdout, cli.StatModeFull, results)
+		return RenderPathStats(out, cli.StatModeFull, results)
 	default:
 		return errors.Newf("unsupported action %q", choice)
 	}
 }
 
-func promptChoice(items []promptItem) (string, error) {
+func promptChoice(items []promptItem, in io.Reader, out io.Writer) (string, error) {
 	if choice := os.Getenv("UMM_TEST_OPEN_ASK_CHOICE"); choice != "" {
 		return choice, nil
 	}
 
 	program := tea.NewProgram(
 		newPromptModel(items),
-		tea.WithInput(os.Stdin),
-		tea.WithOutput(os.Stderr),
+		tea.WithInput(in),
+		tea.WithOutput(out),
 	)
 	model, err := program.Run()
 	if err != nil {
