@@ -1,0 +1,24 @@
+name: rosewood-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#e0def4"
+      bg: "#191724"
+      border: "#403d52"
+      prompt: "#9ccfd8"
+      pointer: "#9ccfd8"
+      marker: "#9ccfd8"
+      spinner: "#9ccfd8"
+      info: "#6e6a86"
+      hl: "#31748f"
+      current-hl: "#ebbcba"
+      preview-border: "#403d52"
+      preview-label: "#c4a7e7"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
