@@ -148,6 +148,11 @@ git:
 
 User themes override built-ins when the exact names collide.
 
+Runtime override:
+
+- `UMM_THEME=<exact-theme-name>` forces the active theme at runtime
+- empty, missing, or invalid `UMM_THEME` values are ignored
+
 ## Flag Reference
 
 Public v1 root flags:
