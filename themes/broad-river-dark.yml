@@ -17,6 +17,7 @@ fzf:
       preview-border: "#727169"
       preview-label: "#957FB8"
   info: inline
+  preview-border: line
   preview-window: "top:60%"
   pointer: "▌"
   marker: "┃"
