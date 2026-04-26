@@ -1,0 +1,24 @@
+name: quicksilver-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#363644"
+      bg: "#ffffff"
+      border: "#7073931a"
+      prompt: "#5266eb"
+      pointer: "#5266eb"
+      marker: "#007f95"
+      spinner: "#007f95"
+      info: "#70707d"
+      hl: "#465bd1"
+      current-hl: "#5266eb"
+      preview-border: "#7073931a"
+      preview-label: "#1e1e2a"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
