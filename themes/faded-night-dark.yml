@@ -1,0 +1,24 @@
+name: faded-night-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#a6accd"
+      bg: "#292d3e"
+      border: "#676e95"
+      prompt: "#82aaff"
+      pointer: "#82aaff"
+      marker: "#f78c6c"
+      spinner: "#f78c6c"
+      info: "#676e95"
+      hl: "#c792ea"
+      current-hl: "#89ddff"
+      preview-border: "#676e95"
+      preview-label: "#c792ea"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
