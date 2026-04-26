@@ -1,0 +1,24 @@
+name: feline-frappe-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#c6d0f5"
+      bg: "#303446"
+      border: "#a5adce"
+      prompt: "#8da4e2"
+      pointer: "#8da4e2"
+      marker: "#81c8be"
+      spinner: "#81c8be"
+      info: "#b5bfe2"
+      hl: "#ca9ee6"
+      current-hl: "#99d1db"
+      preview-border: "#a5adce"
+      preview-label: "#ca9ee6"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
