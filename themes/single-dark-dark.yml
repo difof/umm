@@ -1,0 +1,24 @@
+name: single-dark-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#abb2bf"
+      bg: "#282c34"
+      border: "#5c6370"
+      prompt: "#61afef"
+      pointer: "#61afef"
+      marker: "#d19a66"
+      spinner: "#d19a66"
+      info: "#5c6370"
+      hl: "#c678dd"
+      current-hl: "#56b6c2"
+      preview-border: "#5c6370"
+      preview-label: "#c678dd"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
