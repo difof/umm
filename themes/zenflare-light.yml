@@ -1,0 +1,24 @@
+name: zenflare-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#3f3f3f"
+      bg: "#ffffef"
+      border: "#6f6f6f"
+      prompt: "#5f7f8f"
+      pointer: "#5f7f8f"
+      marker: "#8f7f5f"
+      spinner: "#8f7f5f"
+      info: "#6f6f6f"
+      hl: "#8f8f5f"
+      current-hl: "#5f8f8f"
+      preview-border: "#6f6f6f"
+      preview-label: "#8f8f5f"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
