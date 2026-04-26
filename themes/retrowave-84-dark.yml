@@ -1,0 +1,24 @@
+name: retrowave-84-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#ffffff"
+      bg: "#262335"
+      border: "#495495"
+      prompt: "#36f9f6"
+      pointer: "#36f9f6"
+      marker: "#ff8b39"
+      spinner: "#ff8b39"
+      info: "#848bbd"
+      hl: "#ff7edb"
+      current-hl: "#b084eb"
+      preview-border: "#495495"
+      preview-label: "#ff7edb"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
