@@ -1,0 +1,24 @@
+name: deep-forest-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#5c6a72"
+      bg: "#fdf6e3"
+      border: "#a6b0a0"
+      prompt: "#8da101"
+      pointer: "#8da101"
+      marker: "#35a77c"
+      spinner: "#35a77c"
+      info: "#a6b0a0"
+      hl: "#df69ba"
+      current-hl: "#35a77c"
+      preview-border: "#a6b0a0"
+      preview-label: "#df69ba"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
