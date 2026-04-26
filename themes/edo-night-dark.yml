@@ -1,0 +1,24 @@
+name: edo-night-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#c0caf5"
+      bg: "#1a1b26"
+      border: "#ff9e64"
+      prompt: "#7aa2f7"
+      pointer: "#7aa2f7"
+      marker: "#7dcfff"
+      spinner: "#7dcfff"
+      info: "#7dcfff"
+      hl: "#bb9af7"
+      current-hl: "#7dcfff"
+      preview-border: "#ff9e64"
+      preview-label: "#7dcfff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
