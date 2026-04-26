@@ -1,0 +1,24 @@
+name: lattice-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#203022"
+      bg: "#eef3ea"
+      border: "#748476"
+      prompt: "#1cc24b"
+      pointer: "#1cc24b"
+      marker: "#30b3ff"
+      spinner: "#30b3ff"
+      info: "#748476"
+      hl: "#c770ff"
+      current-hl: "#24f6d9"
+      preview-border: "#748476"
+      preview-label: "#24f6d9"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
