@@ -182,6 +182,63 @@ func TestConfigCheckInvalidConfigFails(t *testing.T) {
 	}
 }
 
+func TestConfigHelpIncludesSchemaReference(t *testing.T) {
+	cmd := BuildConfigCmd()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--help"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+
+	text := stdout.String()
+	checks := []string{
+		"Config File Schema",
+		"Minimal Example",
+		"theme",
+		"git.default-modes",
+		"git.limits.preview-branch-commits",
+		"keybinds.normal.bind",
+		"keybinds.git.expect-keys",
+		"editors.<name>.cmd",
+		"preview.file.args",
+		"Template Variables",
+		"Keybind Semantics",
+		"  path args: Path, Line, HasLine, StartLine, EndLine, LineRange.",
+		"  validation: Run umm config check",
+	}
+	for _, check := range checks {
+		if !strings.Contains(text, check) {
+			t.Fatalf("expected help output to contain %q, got %q", check, text)
+		}
+	}
+	if strings.Contains(text, "UMM_THEME") {
+		t.Fatalf("expected config appendix to omit UMM_THEME, got %q", text)
+	}
+}
+
+func TestConfigSubcommandHelpDoesNotIncludeSchemaReference(t *testing.T) {
+	cmd := BuildConfigCmd()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"show", "--help"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+
+	text := stdout.String()
+	if strings.Contains(text, "Config File Schema") {
+		t.Fatalf("expected subcommand help without config appendix, got %q", text)
+	}
+	if !strings.Contains(text, "Show the effective configuration") {
+		t.Fatalf("expected show help output, got %q", text)
+	}
+}
+
 func writeTestFile(t *testing.T, path string, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
