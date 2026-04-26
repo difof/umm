@@ -1,0 +1,24 @@
+name: single-dark-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#383a42"
+      bg: "#fafafa"
+      border: "#a0a1a7"
+      prompt: "#4078f2"
+      pointer: "#4078f2"
+      marker: "#986801"
+      spinner: "#986801"
+      info: "#a0a1a7"
+      hl: "#a626a4"
+      current-hl: "#0184bc"
+      preview-border: "#a0a1a7"
+      preview-label: "#a626a4"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
