@@ -1,21 +1,23 @@
 name: feline-frappe-light
 variant: light
 fzf:
+  style: full
+  border: rounded
   color:
     base: light
     entries:
-      fg: "#c6d0f5"
-      bg: "#303446"
-      border: "#a5adce"
-      prompt: "#8da4e2"
-      pointer: "#8da4e2"
-      marker: "#81c8be"
-      spinner: "#81c8be"
-      info: "#b5bfe2"
-      hl: "#ca9ee6"
-      current-hl: "#99d1db"
-      preview-border: "#a5adce"
-      preview-label: "#ca9ee6"
+      fg: "#303446"
+      bg: "#f3f0f8"
+      border: "#8c93ad"
+      prompt: "#536fc4"
+      pointer: "#536fc4"
+      marker: "#2d8b83"
+      spinner: "#2d8b83"
+      info: "#6d7591"
+      hl: "#8f52c5"
+      current-hl: "#2f8191"
+      preview-border: "#8c93ad"
+      preview-label: "#8f52c5"
   info: inline
   preview-window: "top:60%"
   pointer: "▌"
