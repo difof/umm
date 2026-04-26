@@ -131,6 +131,34 @@ func TestLoadEffectiveMergesPartialConfig(t *testing.T) {
 	}
 }
 
+func TestLoadEffectiveAppliesValidUMMThemeOverride(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("UMM_THEME", "lattice-light")
+
+	loaded, err := LoadEffective()
+	if err != nil {
+		t.Fatalf("LoadEffective returned error: %v", err)
+	}
+	if loaded.Config.Theme != "lattice-light" {
+		t.Fatalf("effective theme = %q, want lattice-light", loaded.Config.Theme)
+	}
+}
+
+func TestLoadEffectiveIgnoresInvalidUMMThemeOverride(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("UMM_THEME", "missing-theme")
+
+	loaded, err := LoadEffective()
+	if err != nil {
+		t.Fatalf("LoadEffective returned error: %v", err)
+	}
+	if loaded.Config.Theme != ummtheme.DefaultName {
+		t.Fatalf("effective theme = %q, want %q", loaded.Config.Theme, ummtheme.DefaultName)
+	}
+}
+
 func TestLoadEffectiveRejectsUnknownField(t *testing.T) {
 	xdg := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", xdg)
