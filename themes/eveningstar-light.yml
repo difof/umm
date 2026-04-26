@@ -1,21 +1,22 @@
 name: eveningstar-light
 variant: light
 fzf:
+  border: rounded
   color:
     base: light
     entries:
       fg: "#101010"
       bg: "#F0F0F0"
       border: "#B30000"
-      prompt: "#FFC799"
-      pointer: "#FFC799"
-      marker: "#FFC799"
-      spinner: "#FFC799"
-      info: "#FFC799"
-      hl: "#6e6e6e"
-      current-hl: "#101010"
+      prompt: "#8d541c"
+      pointer: "#8d541c"
+      marker: "#117e69"
+      spinner: "#117e69"
+      info: "#7a7a7a"
+      hl: "#B30000"
+      current-hl: "#8d541c"
       preview-border: "#B30000"
-      preview-label: "#101010"
+      preview-label: "#8d541c"
   info: inline
   preview-window: "top:60%"
   pointer: "▌"
