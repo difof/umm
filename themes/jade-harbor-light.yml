@@ -1,0 +1,24 @@
+name: jade-harbor-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#111c18"
+      bg: "#F6F5DD"
+      border: "#53685B"
+      prompt: "#1faa90"
+      pointer: "#1faa90"
+      marker: "#1faa90"
+      spinner: "#1faa90"
+      info: "#53685B"
+      hl: "#1faa90"
+      current-hl: "#3d7a52"
+      preview-border: "#53685B"
+      preview-label: "#1faa90"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
