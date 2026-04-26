@@ -1,0 +1,24 @@
+name: matter-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#263238"
+      bg: "#fafafa"
+      border: "#e0e0e0"
+      prompt: "#6182b8"
+      pointer: "#6182b8"
+      marker: "#f4511e"
+      spinner: "#f4511e"
+      info: "#90a4ae"
+      hl: "#7c4dff"
+      current-hl: "#7c4dff"
+      preview-border: "#e0e0e0"
+      preview-label: "#6182b8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
