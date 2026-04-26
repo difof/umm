@@ -146,3 +146,34 @@ func TestThemeDumpRequiresForceToOverwrite(t *testing.T) {
 		t.Fatalf("forced dump returned error: %v", err)
 	}
 }
+
+func TestThemeHelpIncludesSchemaReference(t *testing.T) {
+	cmd := BuildThemeCmd()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--help"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	text := stdout.String()
+	checks := []string{
+		"Theme File Schema",
+		"Minimal Example",
+		"Field Reference",
+		"name",
+		"  what: Public exact theme name",
+		"  values: required; lowercase kebab-case",
+		"fzf.preview-border",
+		"values: optional enum:",
+		"fzf.color.entries",
+		"  what: Overrides specific fzf color namespaces",
+		"supported keys: alt-bg",
+	}
+	for _, check := range checks {
+		if !strings.Contains(text, check) {
+			t.Fatalf("expected help output to contain %q, got %q", check, text)
+		}
+	}
+}
