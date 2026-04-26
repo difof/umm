@@ -1,0 +1,24 @@
+name: apex-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#EDEDED"
+      bg: "#000000"
+      border: "#454545"
+      prompt: "#0070F3"
+      pointer: "#0070F3"
+      marker: "#52A8FF"
+      spinner: "#52A8FF"
+      info: "#878787"
+      hl: "#F75590"
+      current-hl: "#0AC7AC"
+      preview-border: "#454545"
+      preview-label: "#BF7AF0"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
