@@ -1,0 +1,24 @@
+name: graphite-fox-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#f2f4f8"
+      bg: "#393939"
+      border: "#ff8389"
+      prompt: "#33b1ff"
+      pointer: "#33b1ff"
+      marker: "#78a9ff"
+      spinner: "#78a9ff"
+      info: "#78a9ff"
+      hl: "#be95ff"
+      current-hl: "#78a9ff"
+      preview-border: "#ff8389"
+      preview-label: "#78a9ff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
