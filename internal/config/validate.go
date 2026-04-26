@@ -121,18 +121,22 @@ func validateKeybinds(cfg KeybindsConfig) error {
 		}
 	}
 
-	dummy := KeybindTemplateData{ReloadCommand: "umm __emit-search --pattern {q}", PreviewCommand: "umm preview {1} {2}"}
-	for _, value := range cfg.Normal.Bind {
-		if _, err := RenderString("normal-bind", value, dummy); err != nil {
-			return errors.Wrap(err)
-		}
+	if err := validateKeybindModeTemplates("normal-bind", cfg.Normal.Bind, KeybindModeNormal); err != nil {
+		return errors.Wrap(err)
 	}
-	for _, value := range cfg.Git.Bind {
-		if _, err := RenderString("git-bind", value, dummy); err != nil {
-			return errors.Wrap(err)
-		}
+	if err := validateKeybindModeTemplates("git-bind", cfg.Git.Bind, KeybindModeGit); err != nil {
+		return errors.Wrap(err)
 	}
 
+	return nil
+}
+
+func validateKeybindModeTemplates(name string, binds []string, mode KeybindModeName) error {
+	for _, value := range binds {
+		if _, err := RenderString(name, value, KeybindTemplateDataForMode(mode)); err != nil {
+			return errors.Wrap(err)
+		}
+	}
 	return nil
 }
 
@@ -259,10 +263,10 @@ func keybindErrors(ctx context.Context, cfg Config) []string {
 	}
 
 	errorsList := []string{}
-	if message := validateKeybindModeWithFZF(ctx, cfg.Keybinds.Normal.Bind, nil); message != "" {
+	if message := validateKeybindModeWithFZFData(ctx, cfg.Keybinds.Normal.Bind, nil, KeybindModeNormal); message != "" {
 		errorsList = append(errorsList, "normal keybinds: "+message)
 	}
-	if message := validateKeybindModeWithFZF(ctx, cfg.Keybinds.Git.Bind, cfg.Keybinds.Git.ExpectKeys); message != "" {
+	if message := validateKeybindModeWithFZFData(ctx, cfg.Keybinds.Git.Bind, cfg.Keybinds.Git.ExpectKeys, KeybindModeGit); message != "" {
 		errorsList = append(errorsList, "git keybinds: "+message)
 	}
 	return errorsList
@@ -291,10 +295,10 @@ func themeErrors(cfg Config) []string {
 	return dedupe(errorsList)
 }
 
-func validateKeybindModeWithFZF(ctx context.Context, binds []string, expect []string) string {
+func validateKeybindModeWithFZFData(ctx context.Context, binds []string, expect []string, mode KeybindModeName) string {
 	args := []string{"--filter", "x"}
 	for _, bind := range binds {
-		rendered, err := RenderString("fzf-bind", bind, KeybindTemplateData{ReloadCommand: "true", PreviewCommand: "cat {}"})
+		rendered, err := RenderString("fzf-bind", bind, keybindValidationData(mode))
 		if err != nil {
 			return err.Error()
 		}
@@ -309,6 +313,13 @@ func validateKeybindModeWithFZF(ctx context.Context, binds []string, expect []st
 		return strings.TrimSpace(output)
 	}
 	return ""
+}
+
+func keybindValidationData(mode KeybindModeName) any {
+	if mode == KeybindModeGit {
+		return GitKeybindTemplateData{PreviewCommand: "cat {}"}
+	}
+	return KeybindTemplateData{ReloadCommand: "true", PreviewCommand: "cat {}"}
 }
 
 var osReadFile = func(path string) ([]byte, error) {
