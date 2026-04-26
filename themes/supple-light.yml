@@ -1,0 +1,24 @@
+name: supple-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#100F0F"
+      bg: "#FFFCF0"
+      border: "#6F6E69"
+      prompt: "#205EA6"
+      pointer: "#205EA6"
+      marker: "#24837B"
+      spinner: "#24837B"
+      info: "#6F6E69"
+      hl: "#66800B"
+      current-hl: "#24837B"
+      preview-border: "#6F6E69"
+      preview-label: "#5E409D"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
