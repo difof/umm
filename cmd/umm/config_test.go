@@ -61,8 +61,11 @@ func TestConfigDumpCreatesDefaults(t *testing.T) {
 	if !strings.Contains(text, "umm theme list") || !strings.Contains(text, "themes/") {
 		t.Fatalf("expected theme guidance comments in dumped config, got %q", text)
 	}
-	if !strings.Contains(text, "LineRange") || !strings.Contains(text, "ReloadCommand") || !strings.Contains(text, "toggle-preview") {
+	if !strings.Contains(text, "LineRange") || !strings.Contains(text, "ReloadCommand") || !strings.Contains(text, "PreviewCommand") || !strings.Contains(text, "toggle-preview") {
 		t.Fatalf("expected inline config reference comments, got %q", text)
+	}
+	if strings.Contains(text, "ctrl-r:reload({{.ReloadCommand}})") {
+		t.Fatalf("expected dumped config to avoid unsupported git reload template, got %q", text)
 	}
 	if strings.Contains(text, "editors:\n  nvim:") {
 		t.Fatalf("expected concise starter config, got %q", text)
@@ -207,6 +210,8 @@ func TestConfigHelpIncludesSchemaReference(t *testing.T) {
 		"Template Variables",
 		"Keybind Semantics",
 		"  path args: Path, Line, HasLine, StartLine, EndLine, LineRange.",
+		"  normal bind: ReloadCommand, PreviewCommand.",
+		"  git bind: PreviewCommand.",
 		"  validation: Run umm config check",
 	}
 	for _, check := range checks {
@@ -216,6 +221,29 @@ func TestConfigHelpIncludesSchemaReference(t *testing.T) {
 	}
 	if strings.Contains(text, "UMM_THEME") {
 		t.Fatalf("expected config appendix to omit UMM_THEME, got %q", text)
+	}
+	if strings.Contains(text, "same syntax and template variables as keybinds.normal.bind") {
+		t.Fatalf("expected git bind help to use the mode-specific template contract, got %q", text)
+	}
+}
+
+func TestConfigCheckRejectsGitReloadTemplate(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("HOME", t.TempDir())
+	writeTestFile(t, filepath.Join(xdg, "umm", "umm.yml"), "keybinds:\n  git:\n    bind:\n      - 'ctrl-r:reload({{.ReloadCommand}})'\n")
+
+	cmd := BuildConfigCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"check"})
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("expected invalid config error")
+	}
+	if !strings.Contains(stderr.String(), "ReloadCommand") || !strings.Contains(stderr.String(), "git-bind") {
+		t.Fatalf("unexpected stderr: %q", stderr.String())
 	}
 }
 
