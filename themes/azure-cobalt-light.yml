@@ -1,0 +1,24 @@
+name: azure-cobalt-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#193549"
+      bg: "#ffffff"
+      border: "#d3dae3"
+      prompt: "#0066cc"
+      pointer: "#0066cc"
+      marker: "#ff5722"
+      spinner: "#ff5722"
+      info: "#5c6b7d"
+      hl: "#ff5722"
+      current-hl: "#00acc1"
+      preview-border: "#d3dae3"
+      preview-label: "#ff9800"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
