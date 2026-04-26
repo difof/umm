@@ -1,0 +1,24 @@
+name: source-two-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#f1ece8"
+      bg: "#1f1f1f"
+      border: "#707070"
+      prompt: "#fab283"
+      pointer: "#fab283"
+      marker: "#edb2f1"
+      spinner: "#edb2f1"
+      info: "#707070"
+      hl: "#edb2f1"
+      current-hl: "#fab283"
+      preview-border: "#707070"
+      preview-label: "#fab283"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
