@@ -1,0 +1,24 @@
+name: broad-river-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#54433A"
+      bg: "#F2E9DE"
+      border: "#9E9389"
+      prompt: "#2D4F67"
+      pointer: "#2D4F67"
+      marker: "#76946A"
+      spinner: "#76946A"
+      info: "#9E9389"
+      hl: "#957FB8"
+      current-hl: "#76946A"
+      preview-border: "#9E9389"
+      preview-label: "#957FB8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
