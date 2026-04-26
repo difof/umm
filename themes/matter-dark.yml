@@ -1,0 +1,24 @@
+name: matter-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#eeffff"
+      bg: "#263238"
+      border: "#37474f"
+      prompt: "#82aaff"
+      pointer: "#82aaff"
+      marker: "#ffcb6b"
+      spinner: "#ffcb6b"
+      info: "#546e7a"
+      hl: "#c792ea"
+      current-hl: "#c792ea"
+      preview-border: "#37474f"
+      preview-label: "#82aaff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
