@@ -1,0 +1,24 @@
+name: source-code-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#eeeeee"
+      bg: "#0a0a0a"
+      border: "#808080"
+      prompt: "#fab283"
+      pointer: "#fab283"
+      marker: "#56b6c2"
+      spinner: "#56b6c2"
+      info: "#808080"
+      hl: "#9d7cd8"
+      current-hl: "#56b6c2"
+      preview-border: "#808080"
+      preview-label: "#9d7cd8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
