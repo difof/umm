@@ -89,6 +89,7 @@ umm theme dump lattice-dark --force
 
 Theme names are exact. Use `umm theme list` to inspect the available built-ins and any user overrides.
 The default shipped theme is `lattice-dark`.
+If one user theme file is unreadable or invalid, discovery continues and the bad entry is reported as `invalid` instead of aborting the whole catalog.
 
 ### Normal search
 
@@ -147,11 +148,27 @@ git:
 ```
 
 User themes override built-ins when the exact names collide.
+Unreadable or invalid user theme overrides still shadow the same exact built-in name, so broken overrides stay visible and do not silently fall back.
 
 Runtime override:
 
 - `UMM_THEME=<exact-theme-name>` forces the active theme at runtime
 - empty, missing, or invalid `UMM_THEME` values are ignored
+
+Validate config and theme errors with:
+
+```bash
+umm config check
+```
+
+### Keybind templates
+
+Mode-specific bind template variables:
+
+- `keybinds.normal.bind`: `{{.ReloadCommand}}`, `{{.PreviewCommand}}`
+- `keybinds.git.bind`: `{{.PreviewCommand}}` only
+
+`keybinds.git.bind` rejects `{{.ReloadCommand}}` because git mode does not support live reload commands.
 
 ## Flag Reference
 
@@ -247,7 +264,7 @@ Git mode searches a unified typed list containing:
 - `stash:`
 - `file:`
 
-`--git-mode` accepts repeated values and comma-separated values. If omitted, all git modes are enabled.
+`--git-mode` accepts repeated values and comma-separated values. If omitted, `umm` uses `git.default-modes` from config, or all git modes when config leaves that unset.
 
 Example:
 
