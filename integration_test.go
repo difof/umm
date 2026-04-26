@@ -71,6 +71,89 @@ func TestCLIIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("interactive normal flow passes themed args to fzf", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		xdg := t.TempDir()
+		writeFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: lattice-dark\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		fzfLog := filepath.Join(binDir, "fzf.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--pattern", "needle")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=stdin-first",
+			"FAKE_FZF_LOG="+fzfLog,
+			"XDG_CONFIG_HOME="+xdg,
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive themed run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(fzfLog)
+		if err != nil {
+			t.Fatalf("ReadFile fzf log: %v", err)
+		}
+		text := string(logged)
+		if !strings.Contains(text, "--color=dark,") || !strings.Contains(text, "--separator=─") || !strings.Contains(text, "--preview-window=top:60%") {
+			t.Fatalf("expected themed fzf args, got %q", text)
+		}
+	})
+
+	t.Run("interactive git flow passes themed args to fzf", func(t *testing.T) {
+		root := t.TempDir()
+		runGit(t, root, "init")
+		runGit(t, root, "config", "user.email", "test@example.com")
+		runGit(t, root, "config", "user.name", "Test User")
+		writeFile(t, filepath.Join(root, "tracked.txt"), "hello\n")
+		runGit(t, root, "add", ".")
+		runGit(t, root, "commit", "-m", "initial commit")
+
+		xdg := t.TempDir()
+		writeFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: lattice-dark\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		fzfLog := filepath.Join(binDir, "fzf.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--git", "--git-mode", "tracked")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=ctrl-o-stdin-first",
+			"FAKE_FZF_LOG="+fzfLog,
+			"XDG_CONFIG_HOME="+xdg,
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive themed git run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(fzfLog)
+		if err != nil {
+			t.Fatalf("ReadFile fzf log: %v", err)
+		}
+		text := string(logged)
+		if !strings.Contains(text, "--color=dark,") || !strings.Contains(text, "--prompt=> Git: ") || !strings.Contains(text, "--preview-window=top:60%") {
+			t.Fatalf("expected themed git fzf args, got %q", text)
+		}
+	})
+
 	t.Run("interactive startup with empty query streams initial results", func(t *testing.T) {
 		root := t.TempDir()
 		writeFile(t, filepath.Join(root, "one.txt"), "first\n")
@@ -209,6 +292,90 @@ func TestCLIIntegration(t *testing.T) {
 		output := runCmd(t, binary, "--root", root, "--git", "--no-ui", "--pattern", `tag:\s+v1\.0\.0`)
 		if !strings.Contains(output, "tag:") || !strings.Contains(output, "v1.0.0") {
 			t.Fatalf("expected git output to contain tag summary, got %q", output)
+		}
+	})
+
+	t.Run("non-interactive flow works with broken selected theme", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		xdg := t.TempDir()
+		writeFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: missing-theme\n")
+
+		cmd := exec.Command(binary, "--root", root, "--no-ui", "--pattern", "needle", "--only-stat", "list")
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+xdg)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("no-ui run with broken theme failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), filepath.Join(root, "one.txt")) {
+			t.Fatalf("expected no-ui output, got %q", stdout.String())
+		}
+	})
+
+	t.Run("interactive flow fails clearly with broken selected theme", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		xdg := t.TempDir()
+		writeFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: missing-theme\n")
+
+		binDir := t.TempDir()
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--pattern", "needle")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR=true",
+			"XDG_CONFIG_HOME="+xdg,
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err == nil {
+			t.Fatal("expected interactive run to fail with broken theme")
+		}
+		if !strings.Contains(stderr.String(), "missing-theme") {
+			t.Fatalf("expected missing-theme error, got %q", stderr.String())
+		}
+	})
+
+	t.Run("theme recovery commands work with broken selected theme", func(t *testing.T) {
+		xdg := t.TempDir()
+		writeFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: missing-theme\n")
+
+		cmd := exec.Command(binary, "theme", "list")
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+xdg)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("theme list recovery failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "lattice-dark") {
+			t.Fatalf("expected theme list output, got %q", stdout.String())
+		}
+
+		cmd = exec.Command(binary, "theme", "set", "lattice-dark")
+		cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+xdg)
+		stdout.Reset()
+		stderr.Reset()
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("theme set recovery failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		data, err := os.ReadFile(filepath.Join(xdg, "umm", "umm.yml"))
+		if err != nil {
+			t.Fatalf("ReadFile config: %v", err)
+		}
+		if !strings.Contains(string(data), "theme: lattice-dark") {
+			t.Fatalf("expected recovered config theme, got %q", string(data))
 		}
 	})
 
@@ -477,6 +644,12 @@ func installFakeFZF(t *testing.T, path string) {
 	t.Helper()
 	script := `#!/bin/sh
 mode="${FAKE_FZF_MODE:-stdin-first}"
+if [ -n "$FAKE_FZF_LOG" ]; then
+  : > "$FAKE_FZF_LOG"
+  for arg in "$@"; do
+    printf '%s\n' "$arg" >> "$FAKE_FZF_LOG"
+  done
+fi
 query=""
 start_cmd=""
 change_cmd=""
