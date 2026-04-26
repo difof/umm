@@ -13,7 +13,7 @@ import (
 	"github.com/difof/umm/internal/resultfmt"
 )
 
-func OpenInEditor(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result) error {
+func OpenInEditor(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	targets := editorTargets(results)
 
 	if len(targets) == 0 {
@@ -29,7 +29,7 @@ func OpenInEditor(ctx context.Context, appConfig ummconfig.Config, results []res
 		return errors.Wrap(err)
 	}
 
-	return editor.Open(ctx, command, targets)
+	return editor.Open(ctx, command, targets, stdin, stdout, stderr)
 }
 
 func OpenWithSystem(ctx context.Context, results []resultfmt.Result) error {
