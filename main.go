@@ -20,6 +20,7 @@ func main() {
 	rootCmd.AddCommand(
 		umm.BuildConfigCmd(),
 		umm.BuildPreviewCmd(),
+		umm.BuildThemeCmd(),
 		umm.BuildEmitSearchCmd(),
 	)
 
