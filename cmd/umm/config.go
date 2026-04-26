@@ -3,10 +3,12 @@ package umm
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/difof/errors"
+	"github.com/difof/umm/internal/cmdhelp"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +17,13 @@ func BuildConfigCmd() *cobra.Command {
 	configCmd := &cobra.Command{
 		Use:   "config",
 		Short: "Inspect and manage configuration",
+		Long: strings.Join([]string{
+			"Inspect and manage configuration.",
+			"",
+			"Use \"umm config --help\" to see the command help plus a concise umm.yml schema reference.",
+		}, "\n"),
 	}
+	cmdhelp.AttachAppendix(configCmd, configHelpDoc())
 
 	configCmd.AddCommand(
 		buildConfigShowCmd(),
