@@ -1,0 +1,24 @@
+name: boreal-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#e5e9f0"
+      bg: "#2e3440"
+      border: "#d57780"
+      prompt: "#88c0d0"
+      pointer: "#88c0d0"
+      marker: "#81a1c1"
+      spinner: "#81a1c1"
+      info: "#81a1c1"
+      hl: "#81a1c1"
+      current-hl: "#81a1c1"
+      preview-border: "#d57780"
+      preview-label: "#d57780"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
