@@ -14,6 +14,7 @@ import (
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/gitsearch"
 	"github.com/difof/umm/internal/resultfmt"
+	ummtheme "github.com/difof/umm/internal/theme"
 )
 
 func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
@@ -32,6 +33,14 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig umm
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
+	themeArgs, err := resolveThemeArgs(appConfig.Theme, ummtheme.RenderOverrides{
+		Prompt:        "> Search: ",
+		Info:          "inline",
+		PreviewWindow: "top:60%",
+	})
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
 
 	args := []string{
 		"--ansi",
@@ -39,11 +48,9 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig umm
 		"--query=" + cfg.Pattern,
 		"--delimiter=\t",
 		"--with-nth=3..",
-		"--prompt=> Search: ",
-		"--info=inline",
 		"--preview=" + previewCommand,
-		"--preview-window=top:60%",
 	}
+	args = append(args, themeArgs...)
 	args = append(args, keybindArgs...)
 	if !cfg.NoMulti {
 		args = append(args, "--multi")
@@ -93,6 +100,14 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummcon
 	if err != nil {
 		return nil, false, errors.Wrap(err)
 	}
+	themeArgs, err := resolveThemeArgs(appConfig.Theme, ummtheme.RenderOverrides{
+		Prompt:        "> Git: ",
+		Info:          "inline",
+		PreviewWindow: "top:60%",
+	})
+	if err != nil {
+		return nil, false, errors.Wrap(err)
+	}
 
 	args := []string{
 		"--ansi",
@@ -100,12 +115,10 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummcon
 		"--with-nth=3..",
 		"--header=" + buildGitHeader(cfg.GitModes),
 		"--header-first",
-		"--prompt=> Git: ",
-		"--info=inline",
 		"--query=" + cfg.Pattern,
 		"--preview=" + previewCommand,
-		"--preview-window=top:60%",
 	}
+	args = append(args, themeArgs...)
 	if len(appConfig.Keybinds.Git.ExpectKeys) > 0 {
 		args = append(args, "--expect="+strings.Join(appConfig.Keybinds.Git.ExpectKeys, ","))
 	}
@@ -253,4 +266,24 @@ func shellQuote(value string) string {
 
 func itoa(v int) string {
 	return strconv.Itoa(v)
+}
+
+func resolveThemeArgs(name string, overrides ummtheme.RenderOverrides) ([]string, error) {
+	configDir, err := ummconfig.ResolveConfigDir()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	catalog, err := ummtheme.Discover(configDir)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	entry, err := catalog.Resolve(name)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	args, err := ummtheme.Render(entry.Theme, overrides)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return args, nil
 }
