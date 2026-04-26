@@ -1,0 +1,24 @@
+name: boreal-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#2e3440"
+      bg: "#eceff4"
+      border: "#bf616a"
+      prompt: "#5e81ac"
+      pointer: "#5e81ac"
+      marker: "#81a1c1"
+      spinner: "#81a1c1"
+      info: "#81a1c1"
+      hl: "#5e81ac"
+      current-hl: "#81a1c1"
+      preview-border: "#bf616a"
+      preview-label: "#bf616a"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
