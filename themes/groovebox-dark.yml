@@ -1,0 +1,24 @@
+name: groovebox-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#ebdbb2"
+      bg: "#282828"
+      border: "#fb4934"
+      prompt: "#83a598"
+      pointer: "#83a598"
+      marker: "#d3869b"
+      spinner: "#d3869b"
+      info: "#d3869b"
+      hl: "#fb4934"
+      current-hl: "#d3869b"
+      preview-border: "#fb4934"
+      preview-label: "#fb4934"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
