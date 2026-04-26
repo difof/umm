@@ -53,7 +53,7 @@ func runEmitSearchCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error
 	}
 
 	config := errors.MustResult(cli.NormalizeEmitterOptions(options))
-	if err := app.EmitSearch(cmd.Context(), config, cmd.OutOrStdout()); err != nil {
+	if err := app.EmitSearch(cmd.Context(), config, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		return errors.Wrap(err)
 	}
 
