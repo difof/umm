@@ -1,0 +1,24 @@
+name: sweetfish-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#4f5964"
+      bg: "#fdfaf4"
+      border: "#ef7d71"
+      prompt: "#4aa8c8"
+      pointer: "#4aa8c8"
+      marker: "#2f9bce"
+      spinner: "#2f9bce"
+      info: "#2f9bce"
+      hl: "#c76a1a"
+      current-hl: "#2f86b7"
+      preview-border: "#ef7d71"
+      preview-label: "#2f86b7"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
