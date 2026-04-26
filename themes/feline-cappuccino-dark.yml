@@ -1,0 +1,24 @@
+name: feline-cappuccino-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#cdd6f4"
+      bg: "#1e1e2e"
+      border: "#f38ba8"
+      prompt: "#b4befe"
+      pointer: "#b4befe"
+      marker: "#89dceb"
+      spinner: "#89dceb"
+      info: "#89dceb"
+      hl: "#cba6f7"
+      current-hl: "#89dceb"
+      preview-border: "#f38ba8"
+      preview-label: "#f38ba8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
