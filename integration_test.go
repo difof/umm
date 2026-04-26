@@ -110,6 +110,46 @@ func TestCLIIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("UMM_THEME overrides configured theme when valid", func(t *testing.T) {
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "one.txt"), "needle\n")
+
+		xdg := t.TempDir()
+		writeFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: lattice-dark\n")
+
+		binDir := t.TempDir()
+		editorLog := filepath.Join(binDir, "editor.log")
+		fzfLog := filepath.Join(binDir, "fzf.log")
+		installFakeEditor(t, filepath.Join(binDir, "fake-editor"), editorLog)
+		installFakeFZF(t, filepath.Join(binDir, "fzf"))
+
+		cmd := exec.Command(binary, "--root", root, "--pattern", "needle")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+":"+os.Getenv("PATH"),
+			"EDITOR="+filepath.Join(binDir, "fake-editor"),
+			"FAKE_FZF_MODE=stdin-first",
+			"FAKE_FZF_LOG="+fzfLog,
+			"XDG_CONFIG_HOME="+xdg,
+			"UMM_THEME=lattice-light",
+		)
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("interactive env-themed run failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+
+		logged, err := os.ReadFile(fzfLog)
+		if err != nil {
+			t.Fatalf("ReadFile fzf log: %v", err)
+		}
+		text := string(logged)
+		if !strings.Contains(text, "--color=light,") {
+			t.Fatalf("expected UMM_THEME to force light theme, got %q", text)
+		}
+	})
+
 	t.Run("interactive git flow passes themed args to fzf", func(t *testing.T) {
 		root := t.TempDir()
 		runGit(t, root, "init")
