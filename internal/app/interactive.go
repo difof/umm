@@ -17,7 +17,7 @@ import (
 	ummtheme "github.com/difof/umm/internal/theme"
 )
 
-func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
+func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, errOut io.Writer) ([]resultfmt.Result, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -25,7 +25,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig umm
 
 	reloadCommand := buildEmitSearchCommand(exe, cfg)
 	previewCommand := shellQuote(exe) + " preview {1} {2}"
-	input := startNormalSearchInput(ctx, exe, cfg)
+	input := startNormalSearchInput(ctx, exe, cfg, errOut)
 	keybindArgs, err := buildBindArgs(appConfig.Keybinds.Normal.Bind, ummconfig.KeybindTemplateData{
 		ReloadCommand:  reloadCommand,
 		PreviewCommand: previewCommand,
@@ -56,7 +56,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig umm
 		args = append(args, "--multi")
 	}
 
-	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, input, "fzf", args...)
+	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, input, errOut, "fzf", args...)
 	if err != nil {
 		if code, ok := execx.ExitCode(err); ok && (code == 1 || code == 130) && strings.TrimSpace(output) == "" {
 			return nil, nil
@@ -75,7 +75,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig umm
 	return results, nil
 }
 
-func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, bool, error) {
+func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, errOut io.Writer) ([]resultfmt.Result, bool, error) {
 	results, err := gitsearch.Aggregate(ctx, cfg, appConfig)
 	if err != nil {
 		return nil, false, errors.Wrap(err)
@@ -127,7 +127,7 @@ func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummcon
 		args = append(args, "--multi")
 	}
 
-	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, bytes.NewReader(buffer.Bytes()), "fzf", args...)
+	output, err := execx.InteractiveOutputWithInput(ctx, "", nil, bytes.NewReader(buffer.Bytes()), errOut, "fzf", args...)
 	if err != nil {
 		if code, ok := execx.ExitCode(err); ok && (code == 1 || code == 130) && strings.TrimSpace(output) == "" {
 			return nil, false, nil
@@ -241,11 +241,11 @@ func buildEmitArgs(cfg cli.RootConfig, patternStdin bool) []string {
 	return args
 }
 
-func startNormalSearchInput(ctx context.Context, exe string, cfg cli.RootConfig) io.Reader {
+func startNormalSearchInput(ctx context.Context, exe string, cfg cli.RootConfig, errOut io.Writer) io.Reader {
 	reader, writer := io.Pipe()
 	go func() {
 		args := buildEmitArgs(cfg, true)
-		err := execx.Run(ctx, "", nil, strings.NewReader(cfg.Pattern), writer, io.Discard, exe, args...)
+		err := execx.Run(ctx, "", nil, strings.NewReader(cfg.Pattern), writer, errOut, exe, args...)
 		if err != nil {
 			_ = writer.CloseWithError(err)
 			return
