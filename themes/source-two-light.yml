@@ -1,0 +1,24 @@
+name: source-two-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#171311"
+      bg: "#f7f7f7"
+      border: "#8F8F8F"
+      prompt: "#dcde8d"
+      pointer: "#dcde8d"
+      marker: "#a753ae"
+      spinner: "#a753ae"
+      info: "#8F8F8F"
+      hl: "#a753ae"
+      current-hl: "#a753ae"
+      preview-border: "#8F8F8F"
+      preview-label: "#a753ae"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
