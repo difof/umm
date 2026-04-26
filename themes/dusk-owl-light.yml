@@ -1,0 +1,24 @@
+name: dusk-owl-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#403f53"
+      bg: "#f0f0f0"
+      border: "#aa0982"
+      prompt: "#4876d6"
+      pointer: "#4876d6"
+      marker: "#4876d6"
+      spinner: "#4876d6"
+      info: "#4876d6"
+      hl: "#994cc3"
+      current-hl: "#4876d6"
+      preview-border: "#aa0982"
+      preview-label: "#aa0982"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
