@@ -1,0 +1,24 @@
+name: solewave-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#f8f8f2"
+      bg: "#272822"
+      border: "#f92672"
+      prompt: "#ae81ff"
+      pointer: "#ae81ff"
+      marker: "#66d9ef"
+      spinner: "#66d9ef"
+      info: "#66d9ef"
+      hl: "#f92672"
+      current-hl: "#66d9ef"
+      preview-border: "#f92672"
+      preview-label: "#66d9ef"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

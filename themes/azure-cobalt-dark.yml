@@ -1,0 +1,24 @@
+name: azure-cobalt-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#ffffff"
+      bg: "#193549"
+      border: "#2d5a7b"
+      prompt: "#0088ff"
+      pointer: "#0088ff"
+      marker: "#ff9d00"
+      spinner: "#ff9d00"
+      info: "#adb7c9"
+      hl: "#ff9d00"
+      current-hl: "#2affdf"
+      preview-border: "#2d5a7b"
+      preview-label: "#ffc600"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

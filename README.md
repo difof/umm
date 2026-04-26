@@ -27,6 +27,7 @@ The old `umm.sh` shell implementation is now legacy reference code and should no
 - system-open actions
 - Bubble Tea action picker via `--open-ask`
 - stat output modes for file and directory results
+- first-class fzf theme selection with built-in and user themes
 
 ## Requirements
 
@@ -77,6 +78,18 @@ go install github.com/difof/umm@latest
 
 ## Usage
 
+### Theme commands
+
+```bash
+umm theme list
+umm theme set lattice-dark
+umm theme dump lattice-dark
+umm theme dump lattice-dark --force
+```
+
+Theme names are exact. Use `umm theme list` to inspect the available built-ins and any user overrides.
+The default shipped theme is `lattice-dark`.
+
 ### Normal search
 
 ```bash
@@ -106,6 +119,39 @@ umm --root ~/src --pattern TODO --open-ask
 umm --root ~/src --pattern TODO --open-sys
 umm --root ~/src --pattern TODO --only-stat full
 ```
+
+## Configuration
+
+The user config file lives at:
+
+- `$XDG_CONFIG_HOME/umm/umm.yml` when `XDG_CONFIG_HOME` is set
+- `~/.config/umm/umm.yml` otherwise
+
+User theme files live in the sibling theme directory:
+
+- `$XDG_CONFIG_HOME/umm/themes/*.yml`
+- `~/.config/umm/themes/*.yml`
+
+Example:
+
+```yaml
+theme: lattice-dark
+git:
+  default-modes:
+    - commit
+    - branch
+    - tags
+    - reflog
+    - stash
+    - tracked
+```
+
+User themes override built-ins when the exact names collide.
+
+Runtime override:
+
+- `UMM_THEME=<exact-theme-name>` forces the active theme at runtime
+- empty, missing, or invalid `UMM_THEME` values are ignored
 
 ## Flag Reference
 

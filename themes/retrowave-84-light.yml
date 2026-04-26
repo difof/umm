@@ -1,0 +1,24 @@
+name: retrowave-84-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#262335"
+      bg: "#fafafa"
+      border: "#e0e0e0"
+      prompt: "#00bcd4"
+      pointer: "#00bcd4"
+      marker: "#ff5722"
+      spinner: "#ff5722"
+      info: "#5c5c8a"
+      hl: "#e91e63"
+      current-hl: "#9c27b0"
+      preview-border: "#e0e0e0"
+      preview-label: "#e91e63"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

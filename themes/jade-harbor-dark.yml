@@ -1,0 +1,24 @@
+name: jade-harbor-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#C1C497"
+      bg: "#111c18"
+      border: "#53685B"
+      prompt: "#2DD5B7"
+      pointer: "#2DD5B7"
+      marker: "#2DD5B7"
+      spinner: "#2DD5B7"
+      info: "#53685B"
+      hl: "#2DD5B7"
+      current-hl: "#549e6a"
+      preview-border: "#53685B"
+      preview-label: "#2DD5B7"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

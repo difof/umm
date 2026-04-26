@@ -1,0 +1,26 @@
+name: feline-macchiato-light
+variant: light
+fzf:
+  style: full
+  border: rounded
+  color:
+    base: light
+    entries:
+      fg: "#24273a"
+      bg: "#eef1f8"
+      border: "#8792b0"
+      prompt: "#4d76cf"
+      pointer: "#4d76cf"
+      marker: "#2a8e88"
+      spinner: "#2a8e88"
+      info: "#68738f"
+      hl: "#8d63c9"
+      current-hl: "#2f7997"
+      preview-border: "#8792b0"
+      preview-label: "#8d63c9"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

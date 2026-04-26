@@ -49,11 +49,17 @@ func TestConfigDumpCreatesDefaults(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	text := string(data)
+	if !strings.Contains(text, "theme: lattice-dark") {
+		t.Fatalf("expected explicit theme in dumped config, got %q", text)
+	}
 	if !strings.Contains(text, "default-modes:") {
 		t.Fatalf("expected dumped defaults, got %q", string(data))
 	}
 	if !strings.Contains(text, "# editors:") || !strings.Contains(text, "# preview:") {
 		t.Fatalf("expected commented examples in dumped config, got %q", text)
+	}
+	if !strings.Contains(text, "umm theme list") || !strings.Contains(text, "themes/") {
+		t.Fatalf("expected theme guidance comments in dumped config, got %q", text)
 	}
 	if !strings.Contains(text, "LineRange") || !strings.Contains(text, "ReloadCommand") || !strings.Contains(text, "toggle-preview") {
 		t.Fatalf("expected inline config reference comments, got %q", text)

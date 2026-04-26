@@ -1,0 +1,24 @@
+name: caret-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#e4e4e4"
+      bg: "#181818"
+      border: "#e4e4e45e"
+      prompt: "#88c0d0"
+      pointer: "#88c0d0"
+      marker: "#81a1c1"
+      spinner: "#81a1c1"
+      info: "#e4e4e45e"
+      hl: "#82D2CE"
+      current-hl: "#81a1c1"
+      preview-border: "#e4e4e45e"
+      preview-label: "#AAA0FA"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

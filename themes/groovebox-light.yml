@@ -1,0 +1,24 @@
+name: groovebox-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#3c3836"
+      bg: "#fbf1c7"
+      border: "#9d0006"
+      prompt: "#076678"
+      pointer: "#076678"
+      marker: "#8f3f71"
+      spinner: "#8f3f71"
+      info: "#8f3f71"
+      hl: "#9d0006"
+      current-hl: "#8f3f71"
+      preview-border: "#9d0006"
+      preview-label: "#9d0006"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

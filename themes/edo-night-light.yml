@@ -1,0 +1,24 @@
+name: edo-night-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#273153"
+      bg: "#e1e2e7"
+      border: "#b15c00"
+      prompt: "#2e7de9"
+      pointer: "#2e7de9"
+      marker: "#007197"
+      spinner: "#007197"
+      info: "#007197"
+      hl: "#9854f1"
+      current-hl: "#007197"
+      preview-border: "#b15c00"
+      preview-label: "#007197"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

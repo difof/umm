@@ -1,0 +1,24 @@
+name: rosewood-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#575279"
+      bg: "#faf4ed"
+      border: "#dfdad9"
+      prompt: "#31748f"
+      pointer: "#31748f"
+      marker: "#56949f"
+      spinner: "#56949f"
+      info: "#9893a5"
+      hl: "#286983"
+      current-hl: "#d7827e"
+      preview-border: "#dfdad9"
+      preview-label: "#907aa9"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

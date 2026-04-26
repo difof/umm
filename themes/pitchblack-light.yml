@@ -1,0 +1,24 @@
+name: pitchblack-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#0a0a0a"
+      bg: "#f0f0f0"
+      border: "#ff0080"
+      prompt: "#6200ff"
+      pointer: "#6200ff"
+      marker: "#00b0ff"
+      spinner: "#00b0ff"
+      info: "#00b0ff"
+      hl: "#d500f9"
+      current-hl: "#ff9100"
+      preview-border: "#ff0080"
+      preview-label: "#ff9100"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

@@ -1,0 +1,24 @@
+name: solewave-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#292318"
+      bg: "#fdf8ec"
+      border: "#d9487c"
+      prompt: "#bf7bff"
+      pointer: "#bf7bff"
+      marker: "#2d9ad7"
+      spinner: "#2d9ad7"
+      info: "#2d9ad7"
+      hl: "#d9487c"
+      current-hl: "#1f88c8"
+      preview-border: "#d9487c"
+      preview-label: "#1f88c8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

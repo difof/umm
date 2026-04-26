@@ -1,0 +1,24 @@
+name: halo-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#edecee"
+      bg: "#15141b"
+      border: "#ff6767"
+      prompt: "#a277ff"
+      pointer: "#a277ff"
+      marker: "#82e2ff"
+      spinner: "#82e2ff"
+      info: "#82e2ff"
+      hl: "#a277ff"
+      current-hl: "#ffca85"
+      preview-border: "#ff6767"
+      preview-label: "#ffca85"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

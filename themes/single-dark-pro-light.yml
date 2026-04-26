@@ -1,0 +1,24 @@
+name: single-dark-pro-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#2b303b"
+      bg: "#f5f6f8"
+      border: "#d85462"
+      prompt: "#528bff"
+      pointer: "#528bff"
+      marker: "#61afef"
+      spinner: "#61afef"
+      info: "#61afef"
+      hl: "#a626a4"
+      current-hl: "#61afef"
+      preview-border: "#d85462"
+      preview-label: "#d85462"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

@@ -1,0 +1,24 @@
+name: sweetfish-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#d6dae0"
+      bg: "#0f1419"
+      border: "#f2856f"
+      prompt: "#3fb7e3"
+      pointer: "#3fb7e3"
+      marker: "#66c6f1"
+      spinner: "#66c6f1"
+      info: "#66c6f1"
+      hl: "#ff8f40"
+      current-hl: "#39bae6"
+      preview-border: "#f2856f"
+      preview-label: "#39bae6"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

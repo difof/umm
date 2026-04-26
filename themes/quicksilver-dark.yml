@@ -1,0 +1,24 @@
+name: quicksilver-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#dddde5"
+      bg: "#171721"
+      border: "#b4b7c81f"
+      prompt: "#8da4f5"
+      pointer: "#8da4f5"
+      marker: "#77becf"
+      spinner: "#77becf"
+      info: "#9d9da8"
+      hl: "#8da4f5"
+      current-hl: "#a7b6f8"
+      preview-border: "#b4b7c81f"
+      preview-label: "#ffffff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

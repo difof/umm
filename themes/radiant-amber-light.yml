@@ -1,0 +1,24 @@
+name: radiant-amber-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#1a1a1a"
+      bg: "#fff5f0"
+      border: "#8a8a8a"
+      prompt: "#EC5B2B"
+      pointer: "#EC5B2B"
+      marker: "#318795"
+      spinner: "#318795"
+      info: "#8a8a8a"
+      hl: "#EC5B2B"
+      current-hl: "#318795"
+      preview-border: "#8a8a8a"
+      preview-label: "#EC5B2B"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

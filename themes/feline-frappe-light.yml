@@ -1,0 +1,26 @@
+name: feline-frappe-light
+variant: light
+fzf:
+  style: full
+  border: rounded
+  color:
+    base: light
+    entries:
+      fg: "#303446"
+      bg: "#f3f0f8"
+      border: "#8c93ad"
+      prompt: "#536fc4"
+      pointer: "#536fc4"
+      marker: "#2d8b83"
+      spinner: "#2d8b83"
+      info: "#6d7591"
+      hl: "#8f52c5"
+      current-hl: "#2f8191"
+      preview-border: "#8c93ad"
+      preview-label: "#8f52c5"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

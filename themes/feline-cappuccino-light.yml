@@ -1,0 +1,24 @@
+name: feline-cappuccino-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#4c4f69"
+      bg: "#f5e0dc"
+      border: "#d20f39"
+      prompt: "#7287fd"
+      pointer: "#7287fd"
+      marker: "#04a5e5"
+      spinner: "#04a5e5"
+      info: "#04a5e5"
+      hl: "#8839ef"
+      current-hl: "#04a5e5"
+      preview-border: "#d20f39"
+      preview-label: "#d20f39"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

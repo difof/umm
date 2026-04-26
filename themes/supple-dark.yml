@@ -1,0 +1,24 @@
+name: supple-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#CECDC3"
+      bg: "#100F0F"
+      border: "#6F6E69"
+      prompt: "#DA702C"
+      pointer: "#DA702C"
+      marker: "#3AA99F"
+      spinner: "#3AA99F"
+      info: "#6F6E69"
+      hl: "#879A39"
+      current-hl: "#3AA99F"
+      preview-border: "#6F6E69"
+      preview-label: "#8B7EC8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

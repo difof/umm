@@ -1,0 +1,24 @@
+name: violet-haze-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#f5f0ff"
+      bg: "#1a102b"
+      border: "#ff7ac6"
+      prompt: "#c792ff"
+      pointer: "#c792ff"
+      marker: "#7dd4ff"
+      spinner: "#7dd4ff"
+      info: "#7dd4ff"
+      hl: "#ff9d00"
+      current-hl: "#9effff"
+      preview-border: "#ff7ac6"
+      preview-label: "#9effff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

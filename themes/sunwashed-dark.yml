@@ -1,0 +1,24 @@
+name: sunwashed-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#93a1a1"
+      bg: "#002b36"
+      border: "#d33682"
+      prompt: "#6c71c4"
+      pointer: "#6c71c4"
+      marker: "#2aa198"
+      spinner: "#2aa198"
+      info: "#2aa198"
+      hl: "#859900"
+      current-hl: "#268bd2"
+      preview-border: "#d33682"
+      preview-label: "#268bd2"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

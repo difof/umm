@@ -17,6 +17,7 @@ func LoadEffective() (LoadResult, error) {
 
 	result := LoadResult{Path: path, UserExists: exists, Config: Defaults()}
 	if !exists {
+		result.Config = applyThemeEnvOverride(result.Config)
 		if err := Validate(result.Config); err != nil {
 			return LoadResult{}, errors.Wrap(err)
 		}
@@ -35,6 +36,7 @@ func LoadEffective() (LoadResult, error) {
 	}
 	result.RawUser = raw
 	result.Config = mergeIntoDefaults(raw)
+	result.Config = applyThemeEnvOverride(result.Config)
 
 	if err := Validate(result.Config); err != nil {
 		return LoadResult{}, errors.Wrapf(err, "validate config %s", path)
@@ -63,10 +65,20 @@ func WriteDefaults(path string) error {
 		return errors.Wrap(err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := writeFile(path, data); err != nil {
 		return errors.Wrap(err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+
+	return nil
+}
+
+func WriteDefaultsForTheme(path string, theme string) error {
+	data, err := DefaultFileForTheme(theme)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+
+	if err := writeFile(path, data); err != nil {
 		return errors.Wrap(err)
 	}
 
@@ -74,13 +86,19 @@ func WriteDefaults(path string) error {
 }
 
 func DefaultFile() ([]byte, error) {
+	return DefaultFileForTheme(Defaults().Theme)
+}
+
+func DefaultFileForTheme(theme string) ([]byte, error) {
 	cfg := Defaults()
+	cfg.Theme = theme
 	buffer := bytes.Buffer{}
 	buffer.WriteString(defaultFileHeader)
 
 	encoder := yaml.NewEncoder(&buffer)
 	encoder.SetIndent(2)
 	if err := encoder.Encode(starterConfig{
+		Theme:    cfg.Theme,
 		Git:      cfg.Git,
 		Keybinds: cfg.Keybinds,
 	}); err != nil {
@@ -96,6 +114,16 @@ func DefaultFile() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func writeFile(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return errors.Wrap(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return errors.Wrap(err)
+	}
+	return nil
+}
+
 func decodeRaw(data []byte) (RawConfig, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
@@ -109,6 +137,7 @@ func decodeRaw(data []byte) (RawConfig, error) {
 }
 
 type starterConfig struct {
+	Theme    string         `yaml:"theme"`
 	Git      GitConfig      `yaml:"git"`
 	Keybinds KeybindsConfig `yaml:"keybinds"`
 }
@@ -120,6 +149,7 @@ const defaultFileHeader = `# umm configuration
 # micro, emacs, emacsclient, code, cursor, agy, subl, and sublime_text.
 #
 # Config semantics:
+# - theme selects the active fzf presentation theme by exact name.
 # - git.default-modes applies only when --git is set and --git-mode was not passed.
 # - all git limit fields use 0 to mean unlimited.
 # - keybinds.normal.bind and keybinds.git.bind replace the built-in bind lists.
@@ -127,6 +157,8 @@ const defaultFileHeader = `# umm configuration
 # - expect-keys takes precedence over bind when the same key appears in both places.
 # - preview.file/diff/tree run custom commands first; if missing or failing, umm warns
 #   once at command startup and then falls back to the built-in preview flow.
+# - built-in themes are listed with the "umm theme list" command.
+# - dumped or custom user themes live in the sibling themes/ directory.
 #
 # Supported template variables:
 # - editors first-target/rest-target, preview.file args, preview.tree args:
@@ -250,6 +282,10 @@ const defaultFileExamples = `# Define custom editor aliases here when built-in e
 
 func mergeIntoDefaults(raw RawConfig) Config {
 	cfg := Defaults()
+
+	if raw.Theme != nil {
+		cfg.Theme = *raw.Theme
+	}
 
 	if raw.Git != nil {
 		if raw.Git.DefaultModes != nil {

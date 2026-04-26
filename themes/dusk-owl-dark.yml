@@ -1,0 +1,24 @@
+name: dusk-owl-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#d6deeb"
+      bg: "#011627"
+      border: "#f78c6c"
+      prompt: "#82aaff"
+      pointer: "#82aaff"
+      marker: "#82aaff"
+      spinner: "#82aaff"
+      info: "#82aaff"
+      hl: "#c792ea"
+      current-hl: "#82aaff"
+      preview-border: "#f78c6c"
+      preview-label: "#f78c6c"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

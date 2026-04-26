@@ -8,12 +8,21 @@ import (
 )
 
 func ResolveWritePath() (string, error) {
+	configDir, err := ResolveConfigDir()
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+
+	return filepath.Join(configDir, "umm.yml"), nil
+}
+
+func ResolveConfigDir() (string, error) {
 	base, err := configBaseDir()
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
 
-	return filepath.Join(base, "umm", "umm.yml"), nil
+	return filepath.Join(base, "umm"), nil
 }
 
 func FindUserPath() (string, bool, error) {

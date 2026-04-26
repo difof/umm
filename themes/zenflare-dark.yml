@@ -1,0 +1,24 @@
+name: zenflare-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#dcdccc"
+      bg: "#3f3f3f"
+      border: "#9f9f9f"
+      prompt: "#8cd0d3"
+      pointer: "#8cd0d3"
+      marker: "#dfaf8f"
+      spinner: "#dfaf8f"
+      info: "#9f9f9f"
+      hl: "#f0dfaf"
+      current-hl: "#93e0e3"
+      preview-border: "#9f9f9f"
+      preview-label: "#f0dfaf"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

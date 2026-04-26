@@ -1,0 +1,24 @@
+name: apex-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#171717"
+      bg: "#FFFFFF"
+      border: "#999999"
+      prompt: "#0070F3"
+      pointer: "#0070F3"
+      marker: "#0070F3"
+      spinner: "#0070F3"
+      info: "#666666"
+      hl: "#E93D82"
+      current-hl: "#12A594"
+      preview-border: "#999999"
+      preview-label: "#8E4EC6"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

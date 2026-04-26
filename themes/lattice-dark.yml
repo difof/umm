@@ -1,0 +1,24 @@
+name: lattice-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#62ff94"
+      bg: "#0a0e0a"
+      border: "#8ca391"
+      prompt: "#2eff6a"
+      pointer: "#2eff6a"
+      marker: "#30b3ff"
+      spinner: "#30b3ff"
+      info: "#8ca391"
+      hl: "#c770ff"
+      current-hl: "#24f6d9"
+      preview-border: "#8ca391"
+      preview-label: "#00efff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

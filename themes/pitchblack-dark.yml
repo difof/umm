@@ -1,0 +1,24 @@
+name: pitchblack-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#ffffff"
+      bg: "#000000"
+      border: "#ff4081"
+      prompt: "#b388ff"
+      pointer: "#b388ff"
+      marker: "#18ffff"
+      spinner: "#18ffff"
+      info: "#18ffff"
+      hl: "#ff00ff"
+      current-hl: "#ffea00"
+      preview-border: "#ff4081"
+      preview-label: "#ffea00"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

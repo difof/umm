@@ -1,0 +1,24 @@
+name: nosferatu-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#1f1f2f"
+      bg: "#f8f8f2"
+      border: "#d16090"
+      prompt: "#7c6bf5"
+      pointer: "#7c6bf5"
+      marker: "#1d7fc5"
+      spinner: "#1d7fc5"
+      info: "#1d7fc5"
+      hl: "#d16090"
+      current-hl: "#1d7fc5"
+      preview-border: "#d16090"
+      preview-label: "#1d7fc5"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

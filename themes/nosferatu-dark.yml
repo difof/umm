@@ -1,0 +1,24 @@
+name: nosferatu-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#f8f8f2"
+      bg: "#1d1e28"
+      border: "#ff79c6"
+      prompt: "#bd93f9"
+      pointer: "#bd93f9"
+      marker: "#8be9fd"
+      spinner: "#8be9fd"
+      info: "#8be9fd"
+      hl: "#ff79c6"
+      current-hl: "#8be9fd"
+      preview-border: "#ff79c6"
+      preview-label: "#8be9fd"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

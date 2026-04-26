@@ -1,0 +1,24 @@
+name: broad-river-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#DCD7BA"
+      bg: "#1F1F28"
+      border: "#727169"
+      prompt: "#7E9CD8"
+      pointer: "#7E9CD8"
+      marker: "#76946A"
+      spinner: "#76946A"
+      info: "#727169"
+      hl: "#957FB8"
+      current-hl: "#76946A"
+      preview-border: "#727169"
+      preview-label: "#957FB8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

@@ -1,0 +1,24 @@
+name: source-code-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#1a1a1a"
+      bg: "#ffffff"
+      border: "#8a8a8a"
+      prompt: "#3b7dd8"
+      pointer: "#3b7dd8"
+      marker: "#318795"
+      spinner: "#318795"
+      info: "#8a8a8a"
+      hl: "#d68c27"
+      current-hl: "#318795"
+      preview-border: "#8a8a8a"
+      preview-label: "#d68c27"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

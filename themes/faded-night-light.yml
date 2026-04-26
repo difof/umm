@@ -1,0 +1,24 @@
+name: faded-night-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#292d3e"
+      bg: "#fafafa"
+      border: "#8796b0"
+      prompt: "#4976eb"
+      pointer: "#4976eb"
+      marker: "#f4511e"
+      spinner: "#f4511e"
+      info: "#8796b0"
+      hl: "#a854f2"
+      current-hl: "#00acc1"
+      preview-border: "#8796b0"
+      preview-label: "#a854f2"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"

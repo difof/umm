@@ -11,9 +11,13 @@ import (
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/execx"
+	ummtheme "github.com/difof/umm/internal/theme"
 )
 
 func Validate(cfg Config) error {
+	if err := validateTheme(cfg.Theme); err != nil {
+		return errors.Wrap(err)
+	}
 	if err := validateGit(cfg.Git); err != nil {
 		return errors.Wrap(err)
 	}
@@ -25,6 +29,13 @@ func Validate(cfg Config) error {
 	}
 	if err := validatePreview(cfg.Preview); err != nil {
 		return errors.Wrap(err)
+	}
+	return nil
+}
+
+func validateTheme(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return errors.New("theme must not be empty")
 	}
 	return nil
 }
@@ -58,6 +69,7 @@ func Check(ctx context.Context) (CheckReport, error) {
 	}
 
 	report.Warnings = append(report.Warnings, commandWarnings(cfg, raw)...)
+	report.Errors = append(report.Errors, themeErrors(cfg)...)
 	report.Errors = append(report.Errors, keybindErrors(ctx, cfg)...)
 	report.Warnings = append(report.Warnings, keybindWarnings()...)
 	sort.Strings(report.Warnings)
@@ -254,6 +266,29 @@ func keybindErrors(ctx context.Context, cfg Config) []string {
 		errorsList = append(errorsList, "git keybinds: "+message)
 	}
 	return errorsList
+}
+
+func themeErrors(cfg Config) []string {
+	configDir, err := ResolveConfigDir()
+	if err != nil {
+		return []string{err.Error()}
+	}
+	catalog, err := ummtheme.Discover(configDir)
+	if err != nil {
+		return []string{err.Error()}
+	}
+
+	errorsList := []string{}
+	if _, err := catalog.Resolve(cfg.Theme); err != nil {
+		errorsList = append(errorsList, err.Error())
+	}
+	for _, entry := range catalog.Entries() {
+		if entry.Origin == ummtheme.OriginUser && entry.Invalid && entry.LoadErr != nil {
+			errorsList = append(errorsList, entry.LoadErr.Error())
+		}
+	}
+
+	return dedupe(errorsList)
 }
 
 func validateKeybindModeWithFZF(ctx context.Context, binds []string, expect []string) string {

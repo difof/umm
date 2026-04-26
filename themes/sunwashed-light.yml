@@ -1,0 +1,24 @@
+name: sunwashed-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#586e75"
+      bg: "#fdf6e3"
+      border: "#d33682"
+      prompt: "#268bd2"
+      pointer: "#268bd2"
+      marker: "#2aa198"
+      spinner: "#2aa198"
+      info: "#2aa198"
+      hl: "#728600"
+      current-hl: "#268bd2"
+      preview-border: "#d33682"
+      preview-label: "#268bd2"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
