@@ -22,9 +22,20 @@ func TestLoadBuiltins(t *testing.T) {
 	for _, builtin := range builtins {
 		if builtin.Theme.Name == "lattice-dark" {
 			foundDefault = true
+			if builtin.Theme.FZF.PreviewBorder != BorderLine {
+				t.Fatalf("expected lattice-dark preview border to be line, got %#v", builtin.Theme.FZF.PreviewBorder)
+			}
 		}
 		if builtin.Theme.Name == "forge-hub-light" {
 			foundForgeHub = true
+		}
+		if builtin.Theme.Variant == VariantDark {
+			if builtin.Theme.FZF.PreviewBorder == "" {
+				t.Fatalf("expected dark theme %q to set preview border", builtin.Theme.Name)
+			}
+			if builtin.Theme.FZF.PreviewBorder == BorderRounded {
+				t.Fatalf("expected dark theme %q to avoid rounded preview border", builtin.Theme.Name)
+			}
 		}
 	}
 	if !foundDefault || !foundForgeHub {
