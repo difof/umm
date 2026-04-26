@@ -1,21 +1,22 @@
 name: source-two-light
 variant: light
 fzf:
+  border: sharp
   color:
     base: light
     entries:
       fg: "#171311"
       bg: "#f7f7f7"
-      border: "#8F8F8F"
-      prompt: "#dcde8d"
-      pointer: "#dcde8d"
+      border: "#6F6F6F"
+      prompt: "#034cff"
+      pointer: "#034cff"
       marker: "#a753ae"
       spinner: "#a753ae"
-      info: "#8F8F8F"
+      info: "#6F6F6F"
       hl: "#a753ae"
-      current-hl: "#a753ae"
-      preview-border: "#8F8F8F"
-      preview-label: "#a753ae"
+      current-hl: "#007b80"
+      preview-border: "#6F6F6F"
+      preview-label: "#034cff"
   info: inline
   preview-window: "top:60%"
   pointer: "▌"
