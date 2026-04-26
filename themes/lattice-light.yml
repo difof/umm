@@ -1,21 +1,23 @@
 name: lattice-light
 variant: light
 fzf:
+  style: full
+  border: rounded
   color:
     base: light
     entries:
       fg: "#203022"
       bg: "#eef3ea"
-      border: "#748476"
-      prompt: "#1cc24b"
-      pointer: "#1cc24b"
-      marker: "#30b3ff"
-      spinner: "#30b3ff"
-      info: "#748476"
-      hl: "#c770ff"
-      current-hl: "#24f6d9"
-      preview-border: "#748476"
-      preview-label: "#24f6d9"
+      border: "#5f7261"
+      prompt: "#177c39"
+      pointer: "#177c39"
+      marker: "#1e78ad"
+      spinner: "#1e78ad"
+      info: "#5f7261"
+      hl: "#8f4bca"
+      current-hl: "#0f8a7d"
+      preview-border: "#5f7261"
+      preview-label: "#0f8a7d"
   info: inline
   preview-window: "top:60%"
   pointer: "▌"
