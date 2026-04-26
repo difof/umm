@@ -1,21 +1,23 @@
 name: graphite-fox-light
 variant: light
 fzf:
+  style: full
+  border: sharp
   color:
     base: light
     entries:
       fg: "#161616"
-      bg: "#8e8e8e"
-      border: "#da1e28"
-      prompt: "#0072c3"
-      pointer: "#0072c3"
+      bg: "#f3f4f6"
+      border: "#8d8d8d"
+      prompt: "#00539a"
+      pointer: "#00539a"
       marker: "#0043ce"
       spinner: "#0043ce"
-      info: "#0043ce"
+      info: "#525252"
       hl: "#8a3ffc"
-      current-hl: "#0043ce"
-      preview-border: "#da1e28"
-      preview-label: "#0043ce"
+      current-hl: "#00539a"
+      preview-border: "#8d8d8d"
+      preview-label: "#00539a"
   info: inline
   preview-window: "top:60%"
   pointer: "▌"
