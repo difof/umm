@@ -1,0 +1,24 @@
+name: graphite-fox-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#161616"
+      bg: "#8e8e8e"
+      border: "#da1e28"
+      prompt: "#0072c3"
+      pointer: "#0072c3"
+      marker: "#0043ce"
+      spinner: "#0043ce"
+      info: "#0043ce"
+      hl: "#8a3ffc"
+      current-hl: "#0043ce"
+      preview-border: "#da1e28"
+      preview-label: "#0043ce"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
