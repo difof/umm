@@ -1,0 +1,24 @@
+name: eveningstar-dark
+variant: dark
+fzf:
+  color:
+    base: dark
+    entries:
+      fg: "#FFF"
+      bg: "#101010"
+      border: "#FF8080"
+      prompt: "#FFC799"
+      pointer: "#FFC799"
+      marker: "#FFC799"
+      spinner: "#FFC799"
+      info: "#FFC799"
+      hl: "#a0a0a0"
+      current-hl: "#ffffff"
+      preview-border: "#FF8080"
+      preview-label: "#ffffff"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
