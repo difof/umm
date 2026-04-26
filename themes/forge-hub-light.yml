@@ -1,0 +1,24 @@
+name: forge-hub-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#24292f"
+      bg: "#ffffff"
+      border: "#d0d7de"
+      prompt: "#0969da"
+      pointer: "#0969da"
+      marker: "#bc4c00"
+      spinner: "#bc4c00"
+      info: "#57606a"
+      hl: "#cf222e"
+      current-hl: "#1b7c83"
+      preview-border: "#d0d7de"
+      preview-label: "#0969da"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
