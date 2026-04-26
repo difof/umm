@@ -1,6 +1,9 @@
 package config
 
+import ummtheme "github.com/difof/umm/internal/theme"
+
 type Config struct {
+	Theme    string            `yaml:"theme"`
 	Git      GitConfig         `yaml:"git"`
 	Keybinds KeybindsConfig    `yaml:"keybinds"`
 	Editors  map[string]Editor `yaml:"editors"`
@@ -55,6 +58,7 @@ type Command struct {
 }
 
 type RawConfig struct {
+	Theme    *string              `yaml:"theme"`
 	Git      *RawGitConfig        `yaml:"git"`
 	Keybinds *RawKeybindsConfig   `yaml:"keybinds"`
 	Editors  map[string]RawEditor `yaml:"editors"`
@@ -140,6 +144,7 @@ var validGitModes = map[string]struct{}{
 
 func Defaults() Config {
 	return Config{
+		Theme: ummtheme.DefaultName,
 		Git: GitConfig{
 			DefaultModes: append([]string(nil), AllGitModes...),
 			Limits: GitLimitsConfig{
