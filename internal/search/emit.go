@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 
@@ -27,8 +26,6 @@ type rgJSONLine struct {
 		LineNumber int `json:"line_number"`
 	} `json:"data"`
 }
-
-var dirWalkWarningWriter io.Writer = os.Stderr
 
 func emitContent(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
 	args := []string{"--json", "--line-number", "--no-heading", "--smart-case"}
@@ -136,7 +133,7 @@ func emitFilenames(ctx context.Context, cfg cli.RootConfig, query string, strict
 	return nil
 }
 
-func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
+func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict bool, warningOut io.Writer, emit resultEmitter) error {
 	matcher, err := compileSmartRegex(query)
 	if err != nil {
 		if strict {
@@ -175,7 +172,7 @@ func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict 
 			}
 		}
 
-		reportDirWalkWarnings(report.Warnings)
+		reportDirWalkWarnings(warningOut, report.Warnings)
 		return nil
 	}
 
@@ -194,12 +191,12 @@ func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict 
 		return errors.Wrap(err)
 	}
 
-	reportDirWalkWarnings(report.Warnings)
+	reportDirWalkWarnings(warningOut, report.Warnings)
 	return nil
 }
 
-func reportDirWalkWarnings(warnings []dirWalkWarning) {
-	if len(warnings) == 0 || dirWalkWarningWriter == nil {
+func reportDirWalkWarnings(out io.Writer, warnings []dirWalkWarning) {
+	if len(warnings) == 0 || out == nil {
 		return
 	}
 
@@ -211,7 +208,7 @@ func reportDirWalkWarnings(warnings []dirWalkWarning) {
 	if len(warnings) > maxDetails {
 		lines = append(lines, fmt.Sprintf("  ... and %d more", len(warnings)-maxDetails))
 	}
-	_, _ = io.WriteString(dirWalkWarningWriter, strings.Join(lines, "\n")+"\n")
+	_, _ = io.WriteString(out, strings.Join(lines, "\n")+"\n")
 }
 
 func buildFilesArgs(cfg cli.RootConfig) []string {
