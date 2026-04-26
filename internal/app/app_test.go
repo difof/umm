@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,7 +77,7 @@ func TestBuildBindArgsRendersTemplates(t *testing.T) {
 }
 
 func TestRunGitNoUISystemRequiresTrackedFiles(t *testing.T) {
-	err := runGitNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{GitType: "commit", GitRef: "abc"}})
+	err := runGitNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{GitType: "commit", GitRef: "abc"}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "no tracked file results available") {
 		t.Fatalf("runGitNoUI() error = %v, want tracked-file error", err)
 	}
@@ -91,14 +90,13 @@ func TestRunNormalNoUIAskRoutesToStat(t *testing.T) {
 	second := writeFile(t, root, "nested/b.txt", "two\n")
 
 	results := []resultfmt.Result{{Path: first}, {Path: second}}
-	output := captureStdout(t, func() {
-		if err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionAsk}, ummconfig.Defaults(), results); err != nil {
-			t.Fatalf("runNormalNoUI() returned error: %v", err)
-		}
-	})
+	var output bytes.Buffer
+	if err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionAsk}, ummconfig.Defaults(), results, nil, &output, &bytes.Buffer{}); err != nil {
+		t.Fatalf("runNormalNoUI() returned error: %v", err)
+	}
 
-	if !strings.Contains(output, first) || !strings.Contains(output, second) {
-		t.Fatalf("expected stat output for both selections, got %q", output)
+	if !strings.Contains(output.String(), first) || !strings.Contains(output.String(), second) {
+		t.Fatalf("expected stat output for both selections, got %q", output.String())
 	}
 }
 
@@ -115,7 +113,7 @@ func TestRunNormalNoUISystemUsesFirstResult(t *testing.T) {
 		t.Fatalf("Setenv PATH: %v", err)
 	}
 
-	err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}})
+	err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("runNormalNoUI() returned error: %v", err)
 	}
@@ -146,14 +144,13 @@ func TestRunRootNormalNoUIIntegration(t *testing.T) {
 		StatMode:   cli.StatModeList,
 	}
 
-	output := captureStdout(t, func() {
-		if err := RunRoot(t.Context(), cfg, ummconfig.Defaults()); err != nil {
-			t.Fatalf("RunRoot() returned error: %v", err)
-		}
-	})
+	var output bytes.Buffer
+	if err := RunRootWithIO(t.Context(), cfg, ummconfig.Defaults(), nil, &output, &bytes.Buffer{}); err != nil {
+		t.Fatalf("RunRoot() returned error: %v", err)
+	}
 
-	if !strings.Contains(output, path) {
-		t.Fatalf("expected normal mode output to contain %q, got %q", path, output)
+	if !strings.Contains(output.String(), path) {
+		t.Fatalf("expected normal mode output to contain %q, got %q", path, output.String())
 	}
 }
 
@@ -179,42 +176,14 @@ func TestRunRootGitNoUIIntegration(t *testing.T) {
 		GitModes:   []string{"tracked"},
 	}
 
-	output := captureStdout(t, func() {
-		if err := RunRoot(t.Context(), cfg, ummconfig.Defaults()); err != nil {
-			t.Fatalf("RunRoot() returned error: %v", err)
-		}
-	})
-
-	if !strings.Contains(output, path) {
-		t.Fatalf("expected git mode output to contain %q, got %q", path, output)
+	var output bytes.Buffer
+	if err := RunRootWithIO(t.Context(), cfg, ummconfig.Defaults(), nil, &output, &bytes.Buffer{}); err != nil {
+		t.Fatalf("RunRoot() returned error: %v", err)
 	}
-}
 
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-	old := os.Stdout
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe: %v", err)
+	if !strings.Contains(output.String(), path) {
+		t.Fatalf("expected git mode output to contain %q, got %q", path, output.String())
 	}
-	os.Stdout = writer
-	t.Cleanup(func() { os.Stdout = old })
-
-	fn()
-
-	if err := writer.Close(); err != nil {
-		t.Fatalf("writer.Close: %v", err)
-	}
-	os.Stdout = old
-
-	var buffer bytes.Buffer
-	if _, err := io.Copy(&buffer, reader); err != nil {
-		t.Fatalf("io.Copy: %v", err)
-	}
-	if err := reader.Close(); err != nil {
-		t.Fatalf("reader.Close: %v", err)
-	}
-	return buffer.String()
 }
 
 func writeFile(t *testing.T, root string, rel string, content string) string {
