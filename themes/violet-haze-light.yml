@@ -1,0 +1,24 @@
+name: violet-haze-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#3b2c59"
+      bg: "#f7ebff"
+      border: "#ff6bd5"
+      prompt: "#7a5af8"
+      pointer: "#7a5af8"
+      marker: "#62d4ff"
+      spinner: "#62d4ff"
+      info: "#62d4ff"
+      hl: "#c45f00"
+      current-hl: "#008fb8"
+      preview-border: "#ff6bd5"
+      preview-label: "#008fb8"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
