@@ -67,16 +67,19 @@ func Run(ctx context.Context, dir string, env []string, stdin io.Reader, stdout 
 	return nil
 }
 
-func InteractiveOutput(ctx context.Context, dir string, env []string, name string, args ...string) (string, error) {
-	return InteractiveOutputWithInput(ctx, dir, env, os.Stdin, name, args...)
+func InteractiveOutput(ctx context.Context, dir string, env []string, stdin io.Reader, stderr io.Writer, name string, args ...string) (string, error) {
+	return InteractiveOutputWithInput(ctx, dir, env, stdin, stderr, name, args...)
 }
 
-func InteractiveOutputWithInput(ctx context.Context, dir string, env []string, stdin io.Reader, name string, args ...string) (string, error) {
+func InteractiveOutputWithInput(ctx context.Context, dir string, env []string, stdin io.Reader, stderr io.Writer, name string, args ...string) (string, error) {
 	command := exec.CommandContext(ctx, name, args...)
 	command.Dir = dir
 	command.Env = mergeEnv(env)
 	command.Stdin = stdin
-	command.Stderr = os.Stderr
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	command.Stderr = stderr
 
 	var stdout bytes.Buffer
 	command.Stdout = &stdout
