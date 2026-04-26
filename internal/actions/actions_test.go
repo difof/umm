@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/difof/umm/internal/cli"
+	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/resultfmt"
 )
 
@@ -80,4 +81,22 @@ func TestPromptSelectionSummary(t *testing.T) {
 			t.Fatalf("expected first target to preserve first line, got %#v", targets[0])
 		}
 	})
+}
+
+func TestPromptActionRoutesSummaryAndStatToProvidedWriters(t *testing.T) {
+	t.Setenv("UMM_TEST_OPEN_ASK_CHOICE", "stat")
+	path := t.TempDir()
+	results := []resultfmt.Result{{Path: path}}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if err := PromptAction(t.Context(), ummconfig.Defaults(), results, false, strings.NewReader(""), &stdout, &stderr); err != nil {
+		t.Fatalf("PromptAction returned error: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "Open-compatible files:") {
+		t.Fatalf("expected summary on stderr, got %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Path: "+path) {
+		t.Fatalf("expected stat output on stdout, got %q", stdout.String())
+	}
 }
