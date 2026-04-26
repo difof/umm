@@ -101,3 +101,39 @@ func TestDiscoverInvalidUserOverrideBlocksResolution(t *testing.T) {
 		t.Fatal("expected invalid user override to block resolution")
 	}
 }
+
+func TestDiscoverKeepsUnreadableUserThemeAsInvalidEntry(t *testing.T) {
+	configDir := t.TempDir()
+	userDir := UserDir(configDir)
+	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(configDir, "missing.yml"), filepath.Join(userDir, "broken.yml")); err != nil {
+		t.Fatalf("Symlink returned error: %v", err)
+	}
+
+	catalog, err := Discover(configDir)
+	if err != nil {
+		t.Fatalf("Discover returned error: %v", err)
+	}
+	if _, err := catalog.Resolve(DefaultName); err != nil {
+		t.Fatalf("Resolve builtin returned error: %v", err)
+	}
+	if _, err := catalog.Resolve("broken"); err == nil {
+		t.Fatal("expected unreadable user theme entry to stay invalid")
+	}
+
+	foundBroken := false
+	for _, entry := range catalog.Entries() {
+		if entry.Name != "broken" || entry.Origin != OriginUser {
+			continue
+		}
+		foundBroken = true
+		if !entry.Invalid || entry.LoadErr == nil {
+			t.Fatalf("expected invalid unreadable entry, got %#v", entry)
+		}
+	}
+	if !foundBroken {
+		t.Fatalf("expected broken user entry in catalog, got %#v", catalog.Entries())
+	}
+}
