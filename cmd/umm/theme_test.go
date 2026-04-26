@@ -168,8 +168,11 @@ func TestThemeHelpIncludesSchemaReference(t *testing.T) {
 		"fzf.preview-border",
 		"values: optional enum:",
 		"fzf.color.entries",
-		"  what: Overrides specific fzf color namespaces",
-		"supported keys: alt-bg",
+		"  what: YAML map of individual fzf UI color slots",
+		"  values: optional mapping; format is <slot>: <color-spec>",
+		"  example: fg: \"#62ff94\"",
+		"  slots: main/text: fg, bg",
+		"  all keys: alt-bg",
 	}
 	for _, check := range checks {
 		if !strings.Contains(text, check) {
