@@ -1,0 +1,24 @@
+name: caret-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#141414"
+      bg: "#fcfcfc"
+      border: "#141414ad"
+      prompt: "#6f9ba6"
+      pointer: "#6f9ba6"
+      marker: "#3c7cab"
+      spinner: "#3c7cab"
+      info: "#141414ad"
+      hl: "#b3003f"
+      current-hl: "#141414ad"
+      preview-border: "#141414ad"
+      preview-label: "#206595"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
