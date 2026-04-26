@@ -17,6 +17,7 @@ func LoadEffective() (LoadResult, error) {
 
 	result := LoadResult{Path: path, UserExists: exists, Config: Defaults()}
 	if !exists {
+		result.Config = applyThemeEnvOverride(result.Config)
 		if err := Validate(result.Config); err != nil {
 			return LoadResult{}, errors.Wrap(err)
 		}
@@ -35,6 +36,7 @@ func LoadEffective() (LoadResult, error) {
 	}
 	result.RawUser = raw
 	result.Config = mergeIntoDefaults(raw)
+	result.Config = applyThemeEnvOverride(result.Config)
 
 	if err := Validate(result.Config); err != nil {
 		return LoadResult{}, errors.Wrapf(err, "validate config %s", path)
