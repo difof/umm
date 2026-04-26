@@ -1,0 +1,24 @@
+name: halo-light
+variant: light
+fzf:
+  color:
+    base: light
+    entries:
+      fg: "#2d2640"
+      bg: "#f5f0ff"
+      border: "#d94f4f"
+      prompt: "#a277ff"
+      pointer: "#a277ff"
+      marker: "#5bb8d9"
+      spinner: "#5bb8d9"
+      info: "#5bb8d9"
+      hl: "#7b5ae0"
+      current-hl: "#a96a22"
+      preview-border: "#d94f4f"
+      preview-label: "#a96a22"
+  info: inline
+  preview-window: "top:60%"
+  pointer: "▌"
+  marker: "┃"
+  separator: "─"
+  scrollbar: "│"
