@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -95,7 +96,7 @@ func BuildArgs(editor string, file string, line int) []string {
 	}
 }
 
-func Open(ctx context.Context, command Command, targets []Target) error {
+func Open(ctx context.Context, command Command, targets []Target, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	if len(targets) == 0 {
 		return errors.New("no editor targets to open")
 	}
@@ -121,7 +122,7 @@ func Open(ctx context.Context, command Command, targets []Target) error {
 		}
 	}
 
-	if err := execx.Run(ctx, "", nil, os.Stdin, os.Stdout, os.Stderr, command.Name, args...); err != nil {
+	if err := execx.Run(ctx, "", nil, stdin, stdout, stderr, command.Name, args...); err != nil {
 		return errors.Wrap(err)
 	}
 
