@@ -66,7 +66,7 @@ func runRootCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
 	options.GitModesExplicit = cmd.Flags().Changed("git-mode")
 
 	runtime := errors.MustResult(cli.NormalizeRootOptions(options))
-	if err := app.RunRoot(cmd.Context(), runtime, loaded.Config); err != nil {
+	if err := app.RunRootWithIO(cmd.Context(), runtime, loaded.Config, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		return errors.Wrap(err)
 	}
 

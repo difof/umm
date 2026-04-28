@@ -144,15 +144,9 @@ func TestQuery(t *testing.T) {
 			t.Skip("test environment can still read chmod 000 directories")
 		}
 
-		var warnings bytes.Buffer
-		oldWarningWriter := dirWalkWarningWriter
-		dirWalkWarningWriter = &warnings
-		defer func() {
-			dirWalkWarningWriter = oldWarningWriter
-		}()
-
 		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
-		results, err := Query(t.Context(), cfg, "locked|cmd", true)
+		var warnings bytes.Buffer
+		results, err := QueryWithErrorOutput(t.Context(), cfg, "locked|cmd", true, &warnings)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
 		}

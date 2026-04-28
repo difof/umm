@@ -2,6 +2,7 @@ package umm
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -81,10 +82,10 @@ func runConfigDumpCmd(cmd *cobra.Command, force bool) (err error) {
 
 	path := errors.MustResult(ummconfig.ResolveWritePath())
 	if _, statErr := os.Stat(path); statErr == nil && !force {
-		if !allowTestConfirm() && (!isTTY(os.Stdin) || !isTTY(os.Stderr)) {
+		if !allowTestConfirm() && (!isTerminalReader(cmd.InOrStdin()) || !isTerminalWriter(cmd.ErrOrStderr())) {
 			return errors.New("config file exists; rerun with --force to overwrite outside an interactive terminal")
 		}
-		confirmed := errors.MustResult(confirmOverwrite(path))
+		confirmed := errors.MustResult(confirmOverwrite(path, cmd.InOrStdin(), cmd.ErrOrStderr()))
 		if !confirmed {
 			return nil
 		}
@@ -127,10 +128,23 @@ func runConfigCheckCmd(cmd *cobra.Command) (err error) {
 	return errors.Wrap(err)
 }
 
-func isTTY(file *os.File) bool {
-	if file == nil {
+func isTerminalReader(reader io.Reader) bool {
+	file, ok := reader.(*os.File)
+	if !ok || file == nil {
 		return false
 	}
+	return isTTYFile(file)
+}
+
+func isTerminalWriter(writer io.Writer) bool {
+	file, ok := writer.(*os.File)
+	if !ok || file == nil {
+		return false
+	}
+	return isTTYFile(file)
+}
+
+func isTTYFile(file *os.File) bool {
 	info, err := file.Stat()
 	if err != nil {
 		return false
@@ -152,7 +166,7 @@ type confirmModel struct {
 	choice string
 }
 
-func confirmOverwrite(path string) (bool, error) {
+func confirmOverwrite(path string, in io.Reader, out io.Writer) (bool, error) {
 	if choice := os.Getenv("UMM_TEST_CONFIG_DUMP_CONFIRM"); choice != "" {
 		return choice == "overwrite", nil
 	}
@@ -172,7 +186,7 @@ func confirmOverwrite(path string) (bool, error) {
 	model.SetShowHelp(false)
 	model.DisableQuitKeybindings()
 
-	program := tea.NewProgram(confirmModel{list: model}, tea.WithInput(os.Stdin), tea.WithOutput(os.Stderr))
+	program := tea.NewProgram(confirmModel{list: model}, tea.WithInput(in), tea.WithOutput(out))
 	result, err := program.Run()
 	if err != nil {
 		return false, errors.Wrap(err)

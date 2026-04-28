@@ -19,14 +19,14 @@ func TestRootUsesConfigDefaultGitModes(t *testing.T) {
 	path := filepath.Join(repo, "tracked.txt")
 
 	cmd := BuildRootCmd(repo)
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"--root", repo, "--git", "--no-ui", "--pattern", "tracked"})
 
-	stdout := captureRootStdout(t, func() {
-		if err := cmd.Execute(); err != nil {
-			t.Fatalf("Execute returned error: %v", err)
-		}
-	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
 	if !strings.Contains(stdout.String(), path) {
 		t.Fatalf("expected tracked-file output, got %q", stdout.String())
 	}
@@ -42,14 +42,14 @@ func TestRootExplicitGitModeOverridesConfigDefault(t *testing.T) {
 	runRootGit(t, repo, "tag", "v1.0.0")
 
 	cmd := BuildRootCmd(repo)
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"--root", repo, "--git", "--git-mode", "tags", "--no-ui", "--pattern", "v1.0.0"})
 
-	stdout := captureRootStdout(t, func() {
-		if err := cmd.Execute(); err != nil {
-			t.Fatalf("Execute returned error: %v", err)
-		}
-	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
 	if !strings.Contains(stdout.String(), "tag:") {
 		t.Fatalf("expected tag output, got %q", stdout.String())
 	}
@@ -85,29 +85,4 @@ func writeRootTestFile(t *testing.T, path string, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q): %v", path, err)
 	}
-}
-
-func captureRootStdout(t *testing.T, fn func()) bytes.Buffer {
-	t.Helper()
-	old := os.Stdout
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe: %v", err)
-	}
-	os.Stdout = writer
-	defer func() { os.Stdout = old }()
-
-	fn()
-
-	if err := writer.Close(); err != nil {
-		t.Fatalf("writer.Close: %v", err)
-	}
-	var buffer bytes.Buffer
-	if _, err := buffer.ReadFrom(reader); err != nil {
-		t.Fatalf("ReadFrom: %v", err)
-	}
-	if err := reader.Close(); err != nil {
-		t.Fatalf("reader.Close: %v", err)
-	}
-	return buffer
 }

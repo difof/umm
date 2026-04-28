@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -93,7 +94,7 @@ func DefaultFileForTheme(theme string) ([]byte, error) {
 	cfg := Defaults()
 	cfg.Theme = theme
 	buffer := bytes.Buffer{}
-	buffer.WriteString(defaultFileHeader)
+	buffer.WriteString(defaultFileHeader())
 
 	encoder := yaml.NewEncoder(&buffer)
 	encoder.SetIndent(2)
@@ -109,7 +110,7 @@ func DefaultFileForTheme(theme string) ([]byte, error) {
 	}
 
 	buffer.WriteString("\n")
-	buffer.WriteString(defaultFileExamples)
+	buffer.WriteString(defaultFileExamples())
 
 	return buffer.Bytes(), nil
 }
@@ -142,7 +143,8 @@ type starterConfig struct {
 	Keybinds KeybindsConfig `yaml:"keybinds"`
 }
 
-const defaultFileHeader = `# umm configuration
+func defaultFileHeader() string {
+	return fmt.Sprintf(`# umm configuration
 #
 # This file is optional. When omitted, umm uses the same defaults shown here.
 # Built-in editor profiles already cover common editors such as nvim, vim, vi, nano,
@@ -165,8 +167,10 @@ const defaultFileHeader = `# umm configuration
 #   Path, Line, HasLine, StartLine, EndLine, LineRange
 # - preview.diff args:
 #   Repo, GitType, GitRef, Path, Display, Summary
-# - keybinds bind entries:
-#   ReloadCommand, PreviewCommand
+# - keybinds.normal.bind templates:
+#   %s
+# - keybinds.git.bind templates:
+#   %s
 #
 # Keybind syntax:
 # - bind entries use raw fzf syntax exactly: KEY:ACTION, EVENT:ACTION, or chains such as
@@ -227,9 +231,11 @@ const defaultFileHeader = `# umm configuration
 # - unbind(...), unix-line-discard, unix-word-rubout, untrack-current, up, yank
 # - each transform* action also has a matching bg-transform* variant in fzf
 
-`
+`, KeybindTemplateVariablesText(KeybindModeNormal), KeybindTemplateVariablesText(KeybindModeGit))
+}
 
-const defaultFileExamples = `# Define custom editor aliases here when built-in editor handling is not enough.
+func defaultFileExamples() string {
+	return `# Define custom editor aliases here when built-in editor handling is not enough.
 # The alias is matched against the first token of $EDITOR and its basename.
 # editors:
 #   zed:
@@ -276,9 +282,10 @@ const defaultFileExamples = `# Define custom editor aliases here when built-in e
 #       - alt-enter
 #     bind:
 #       - 'ctrl-/:toggle-preview'
-#       - 'ctrl-r:reload({{.ReloadCommand}})'
+#       - 'ctrl-p:change-preview({{.PreviewCommand}})'
 #       - 'tab:toggle+down,shift-tab:toggle+up'
 `
+}
 
 func mergeIntoDefaults(raw RawConfig) Config {
 	cfg := Defaults()

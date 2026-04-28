@@ -18,8 +18,12 @@ const (
 )
 
 func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+	return QueryWithErrorOutput(ctx, cfg, query, strict, nil)
+}
+
+func QueryWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query string, strict bool, errOut io.Writer) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
-	err := emitQuery(ctx, cfg, query, strict, func(result resultfmt.Result) error {
+	err := emitQuery(ctx, cfg, query, strict, errOut, func(result resultfmt.Result) error {
 		results = append(results, result)
 		return nil
 	})
@@ -36,7 +40,11 @@ func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) (
 }
 
 func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Writer) error {
-	return emitQuery(ctx, cfg, query, false, func(result resultfmt.Result) error {
+	return EmitLinesWithErrorOutput(ctx, cfg, query, out, nil)
+}
+
+func EmitLinesWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query string, out io.Writer, errOut io.Writer) error {
+	return emitQuery(ctx, cfg, query, false, errOut, func(result resultfmt.Result) error {
 		result.Display = highlightDisplay(result.Display, query)
 
 		line, err := resultfmt.EncodeLine(result)
@@ -52,10 +60,10 @@ func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Wri
 	})
 }
 
-func emitQuery(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
+func emitQuery(ctx context.Context, cfg cli.RootConfig, query string, strict bool, errOut io.Writer, emit resultEmitter) error {
 	switch cfg.SearchMode {
 	case cli.SearchModeOnlyDirname:
-		return emitDirnames(ctx, cfg, query, strict, emit)
+		return emitDirnames(ctx, cfg, query, strict, errOut, emit)
 	case cli.SearchModeOnlyFilename:
 		return emitFilenames(ctx, cfg, query, strict, emit)
 	case cli.SearchModeDefault:

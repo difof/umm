@@ -108,19 +108,23 @@ func loadUserEntries(dir string) ([]Entry, error) {
 			continue
 		}
 
-		path := filepath.Join(dir, entry.Name())
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			return nil, errors.Wrapf(err, "read user theme %s", path)
-		}
-
 		base := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		path := filepath.Join(dir, entry.Name())
 		loadedEntry := Entry{
 			Name:   base,
 			Origin: OriginUser,
 			Path:   path,
-			Raw:    append([]byte(nil), raw...),
 		}
+
+		raw, err := osReadFile(path)
+		if err != nil {
+			loadedEntry.Invalid = true
+			loadedEntry.LoadErr = errors.Wrapf(err, "read user theme %s", path)
+			loaded = append(loaded, loadedEntry)
+			continue
+		}
+
+		loadedEntry.Raw = append([]byte(nil), raw...)
 
 		parsed, decodeErr := Decode(raw)
 		if decodeErr != nil {
@@ -147,6 +151,10 @@ func loadUserEntries(dir string) ([]Entry, error) {
 	})
 
 	return loaded, nil
+}
+
+var osReadFile = func(path string) ([]byte, error) {
+	return os.ReadFile(path)
 }
 
 func finalizeCatalog(entries []Entry, resolved map[string]Entry) Catalog {

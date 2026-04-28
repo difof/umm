@@ -33,6 +33,33 @@ func TestThemeListShowsBuiltinsAndShadowedUserOverride(t *testing.T) {
 	}
 }
 
+func TestThemeListContinuesWhenUserThemeCannotBeRead(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("HOME", t.TempDir())
+	themesDir := filepath.Join(xdg, "umm", "themes")
+	if err := os.MkdirAll(themesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(xdg, "missing.yml"), filepath.Join(themesDir, "broken.yml")); err != nil {
+		t.Fatalf("Symlink returned error: %v", err)
+	}
+
+	cmd := BuildThemeCmd()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"list"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	text := stdout.String()
+	if !strings.Contains(text, "lattice-dark") || !strings.Contains(text, "broken") || !strings.Contains(text, "invalid") {
+		t.Fatalf("expected builtins plus invalid unreadable entry, got %q", text)
+	}
+}
+
 func TestThemeSetCreatesStarterConfigWhenMissing(t *testing.T) {
 	xdg := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", xdg)

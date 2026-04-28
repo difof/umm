@@ -1,9 +1,11 @@
 package editor
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	ummconfig "github.com/difof/umm/internal/config"
@@ -123,4 +125,33 @@ func TestResolve(t *testing.T) {
 			t.Fatalf("Resolve() args = %#v, want %#v", cmd.Args, wantArgs)
 		}
 	})
+}
+
+func TestOpenUsesProvidedStdio(t *testing.T) {
+	binDir := t.TempDir()
+	logPath := filepath.Join(binDir, "stdio.log")
+	scriptPath := filepath.Join(binDir, "fake-editor")
+	script := "#!/bin/sh\nread input\nprintf 'in=%s\\n' \"$input\" > \"" + logPath + "\"\nprintf 'out-ok\\n'\nprintf 'err-ok\\n' >&2\n"
+	if err := os.WriteFile(scriptPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile(%q): %v", scriptPath, err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if err := Open(t.Context(), Command{Name: scriptPath}, []Target{{Path: "/tmp/file.txt"}}, strings.NewReader("stdin-ok\n"), &stdout, &stderr); err != nil {
+		t.Fatalf("Open returned error: %v", err)
+	}
+	if stdout.String() != "out-ok\n" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+	if stderr.String() != "err-ok\n" {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+	logged, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q): %v", logPath, err)
+	}
+	if string(logged) != "in=stdin-ok\n" {
+		t.Fatalf("stdin log = %q", string(logged))
+	}
 }

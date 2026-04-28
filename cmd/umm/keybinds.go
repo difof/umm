@@ -63,7 +63,7 @@ func keybindsHelpDoc(loaded ummconfig.LoadResult) cmdhelp.Document {
 				},
 				Code: formatBindLines(loaded.Config.Keybinds.Normal.Bind),
 				Extras: []cmdhelp.LabelLine{
-					{Label: "templates", Text: "ReloadCommand, PreviewCommand."},
+					{Label: "templates", Text: ummconfig.KeybindTemplateVariablesText(ummconfig.KeybindModeNormal)},
 				},
 			},
 			{
@@ -74,7 +74,7 @@ func keybindsHelpDoc(loaded ummconfig.LoadResult) cmdhelp.Document {
 				Code: formatBindLines(loaded.Config.Keybinds.Git.Bind),
 				Extras: []cmdhelp.LabelLine{
 					{Label: "expect-keys", Text: formatExpectKeys(loaded.Config.Keybinds.Git.ExpectKeys)},
-					{Label: "templates", Text: "PreviewCommand only; ReloadCommand is not populated for git mode."},
+					{Label: "templates", Text: ummconfig.KeybindBindTemplateHelp(ummconfig.KeybindModeGit)},
 				},
 			},
 			{
@@ -91,8 +91,8 @@ func keybindsHelpDoc(loaded ummconfig.LoadResult) cmdhelp.Document {
 					"Bind strings are rendered as Go templates before they are passed to fzf.",
 				},
 				Extras: []cmdhelp.LabelLine{
-					{Label: "normal bind", Text: "ReloadCommand, PreviewCommand."},
-					{Label: "git bind", Text: "PreviewCommand."},
+					{Label: "normal bind", Text: ummconfig.KeybindTemplateVariablesText(ummconfig.KeybindModeNormal)},
+					{Label: "git bind", Text: ummconfig.KeybindTemplateVariablesText(ummconfig.KeybindModeGit)},
 					{Label: "validation", Text: "Run umm config check to validate templates and, when fzf is installed, local key names and bind syntax."},
 				},
 			},
@@ -115,7 +115,7 @@ func keybindOverrideExample() *cmdhelp.Example {
 			"      - alt-enter",
 			"    bind:",
 			"      - 'ctrl-/:toggle-preview'",
-			"      - 'ctrl-r:reload({{.PreviewCommand}})'",
+			"      - 'ctrl-p:change-preview({{.PreviewCommand}})'",
 		},
 	}
 }

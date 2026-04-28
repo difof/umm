@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/difof/errors"
@@ -15,7 +15,7 @@ import (
 	"github.com/difof/umm/internal/search"
 )
 
-func runNormal(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) error {
+func runNormal(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) error {
 	if cfg.UsesRG() {
 		if err := deps.Require("rg", "normal search"); err != nil {
 			return errors.Wrap(err)
@@ -23,21 +23,21 @@ func runNormal(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Conf
 	}
 
 	if cfg.NoUI {
-		results, err := search.Query(ctx, cfg, cfg.Pattern, true)
+		results, err := search.QueryWithErrorOutput(ctx, cfg, cfg.Pattern, true, errOut)
 		if err != nil {
 			return errors.Wrap(err)
 		}
 		if len(results) == 0 {
 			return errors.Newf("no matches found for pattern %q", cfg.Pattern)
 		}
-		return runNormalNoUI(ctx, cfg, appConfig, results)
+		return runNormalNoUI(ctx, cfg, appConfig, results, in, out, errOut)
 	}
 
 	if err := deps.Require("fzf", "interactive search"); err != nil {
 		return errors.Wrap(err)
 	}
 
-	results, err := runNormalInteractive(ctx, cfg, appConfig)
+	results, err := runNormalInteractive(ctx, cfg, appConfig, errOut)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -45,10 +45,10 @@ func runNormal(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Conf
 		return nil
 	}
 
-	return handleNormalSelection(ctx, cfg, appConfig, results, false)
+	return handleNormalSelection(ctx, cfg, appConfig, results, false, in, out, errOut)
 }
 
-func runGit(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) error {
+func runGit(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) error {
 	if err := deps.Require("git", "git search"); err != nil {
 		return errors.Wrap(err)
 	}
@@ -64,14 +64,14 @@ func runGit(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config)
 		if len(results) == 0 {
 			return errors.Newf("no git matches found for pattern %q", cfg.Pattern)
 		}
-		return runGitNoUI(ctx, cfg, appConfig, results)
+		return runGitNoUI(ctx, cfg, appConfig, results, in, out, errOut)
 	}
 
 	if err := deps.Require("fzf", "interactive git search"); err != nil {
 		return errors.Wrap(err)
 	}
 
-	results, ctrlO, err := runGitInteractive(ctx, cfg, appConfig)
+	results, ctrlO, err := runGitInteractive(ctx, cfg, appConfig, errOut)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -84,31 +84,31 @@ func runGit(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config)
 		if len(tracked) == 0 {
 			return errors.New("Ctrl+O in git mode requires at least one tracked file selection")
 		}
-		return actions.OpenInEditor(ctx, appConfig, tracked)
+		return actions.OpenInEditor(ctx, appConfig, tracked, in, out, errOut)
 	}
 
-	return handleGitSelection(ctx, cfg, appConfig, results, false)
+	return handleGitSelection(ctx, cfg, appConfig, results, false, in, out, errOut)
 }
 
-func runNormalNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result) error {
+func runNormalNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result, in io.Reader, out io.Writer, errOut io.Writer) error {
 	if cfg.Action == cli.ActionStat {
-		return actions.RenderPathStats(os.Stdout, cfg.StatMode, results)
+		return actions.RenderPathStats(out, cfg.StatMode, results)
 	}
 
 	if cfg.Action == cli.ActionAsk {
-		return handleNormalSelection(ctx, cfg, appConfig, results, true)
+		return handleNormalSelection(ctx, cfg, appConfig, results, true, in, out, errOut)
 	}
 
 	if cfg.Action == cli.ActionSystem {
-		return handleNormalSelection(ctx, cfg, appConfig, results[:1], true)
+		return handleNormalSelection(ctx, cfg, appConfig, results[:1], true, in, out, errOut)
 	}
 
-	return handleNormalSelection(ctx, cfg, appConfig, results[:1], true)
+	return handleNormalSelection(ctx, cfg, appConfig, results[:1], true, in, out, errOut)
 }
 
-func runGitNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result) error {
+func runGitNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result, in io.Reader, out io.Writer, errOut io.Writer) error {
 	if cfg.Action == cli.ActionAsk {
-		return handleGitSelection(ctx, cfg, appConfig, results, true)
+		return handleGitSelection(ctx, cfg, appConfig, results, true, in, out, errOut)
 	}
 
 	if cfg.Action == cli.ActionSystem {
@@ -116,10 +116,10 @@ func runGitNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Con
 		if len(firstTracked) == 0 {
 			return errors.New("no tracked file results available for open action")
 		}
-		return handleGitSelection(ctx, cfg, appConfig, firstTracked, true)
+		return handleGitSelection(ctx, cfg, appConfig, firstTracked, true, in, out, errOut)
 	}
 
-	return handleGitSelection(ctx, cfg, appConfig, results, true)
+	return handleGitSelection(ctx, cfg, appConfig, results, true, in, out, errOut)
 }
 
 func buildGitHeader(modes []string) string {

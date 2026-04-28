@@ -42,11 +42,16 @@ func TestKeybindsCommandMatchesHelpOutput(t *testing.T) {
 		"change:reload:sleep 0.05; {{.ReloadCommand}}",
 		"ctrl-/:toggle-preview",
 		"expect-keys: ctrl-o",
+		"normal bind: ReloadCommand, PreviewCommand.",
+		"git bind: PreviewCommand.",
 	}
 	for _, check := range checks {
 		if !strings.Contains(runText, check) {
 			t.Fatalf("expected keybinds output to contain %q, got %q", check, runText)
 		}
+	}
+	if strings.Contains(runText, "ctrl-r:reload({{.ReloadCommand}})") {
+		t.Fatalf("expected keybinds docs to avoid unsupported git reload examples, got %q", runText)
 	}
 }
 

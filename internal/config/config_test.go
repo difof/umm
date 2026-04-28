@@ -189,6 +189,23 @@ func TestValidateRejectsBadTemplateField(t *testing.T) {
 	}
 }
 
+func TestKeybindTemplateVariablesAreModeAware(t *testing.T) {
+	if got := strings.Join(KeybindTemplateVariables(KeybindModeNormal), ","); got != "ReloadCommand,PreviewCommand" {
+		t.Fatalf("normal keybind template variables = %q", got)
+	}
+	if got := strings.Join(KeybindTemplateVariables(KeybindModeGit), ","); got != "PreviewCommand" {
+		t.Fatalf("git keybind template variables = %q", got)
+	}
+}
+
+func TestValidateRejectsGitReloadTemplate(t *testing.T) {
+	cfg := Defaults()
+	cfg.Keybinds.Git.Bind = []string{"ctrl-r:reload({{.ReloadCommand}})"}
+	if err := Validate(cfg); err == nil || !strings.Contains(err.Error(), "ReloadCommand") {
+		t.Fatalf("expected git reload template validation error, got %v", err)
+	}
+}
+
 func TestCheckReportsWarningsAndKeybindErrors(t *testing.T) {
 	xdg := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", xdg)
@@ -263,6 +280,31 @@ func TestCheckReportsMissingThemeAndInvalidUserTheme(t *testing.T) {
 	text := strings.Join(report.Errors, "\n")
 	if !strings.Contains(text, "missing-theme") || !strings.Contains(text, "broken.yml") {
 		t.Fatalf("expected theme errors, got %#v", report.Errors)
+	}
+}
+
+func TestCheckReportsUnreadableUserTheme(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("HOME", t.TempDir())
+	writeConfigFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: lattice-dark\n")
+	themesDir := filepath.Join(xdg, "umm", "themes")
+	if err := os.MkdirAll(themesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q): %v", themesDir, err)
+	}
+	if err := os.Symlink(filepath.Join(xdg, "missing.yml"), filepath.Join(themesDir, "broken.yml")); err != nil {
+		t.Fatalf("Symlink returned error: %v", err)
+	}
+
+	report, err := Check(context.Background())
+	if err != nil {
+		t.Fatalf("Check returned error: %v", err)
+	}
+	if report.Valid() {
+		t.Fatal("expected unreadable user theme to be reported")
+	}
+	if text := strings.Join(report.Errors, "\n"); !strings.Contains(text, "read user theme") || !strings.Contains(text, "broken.yml") {
+		t.Fatalf("expected unreadable theme error, got %#v", report.Errors)
 	}
 }
 

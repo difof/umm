@@ -45,9 +45,9 @@ func configHelpDoc() cmdhelp.Document {
 					{Path: "git.limits.stashes", What: "Caps how many stash results are loaded for git mode.", Values: limitValues()},
 					{Path: "git.limits.tracked", What: "Caps how many tracked-file results are loaded for git mode.", Values: limitValues()},
 					{Path: "git.limits.preview-branch-commits", What: "Limits how many commits are shown in branch preview summaries.", Values: limitValues()},
-					{Path: "keybinds.normal.bind", What: "Overrides the normal picker bind list with raw fzf --bind expressions.", Values: "list of raw fzf bind strings such as KEY:ACTION, EVENT:ACTION, or KEY:ACTION+ACTION.", Extras: []cmdhelp.LabelLine{{Label: "templates", Text: "Bind strings may reference {{.ReloadCommand}} and {{.PreviewCommand}}."}}},
+					{Path: "keybinds.normal.bind", What: "Overrides the normal picker bind list with raw fzf --bind expressions.", Values: "list of raw fzf bind strings such as KEY:ACTION, EVENT:ACTION, or KEY:ACTION+ACTION.", Extras: []cmdhelp.LabelLine{{Label: "templates", Text: ummconfig.KeybindBindTemplateHelp(ummconfig.KeybindModeNormal)}}},
 					{Path: "keybinds.git.expect-keys", What: "Passes direct-open keys through fzf --expect in git mode.", Values: "list of raw fzf key names such as ctrl-o or alt-enter.", Extras: []cmdhelp.LabelLine{{Label: "notes", Text: "If the same key is present in git.bind, expect-keys takes precedence."}}},
-					{Path: "keybinds.git.bind", What: "Overrides the git picker bind list with raw fzf --bind expressions.", Values: "list of raw fzf bind strings; same syntax and template variables as keybinds.normal.bind."},
+					{Path: "keybinds.git.bind", What: "Overrides the git picker bind list with raw fzf --bind expressions.", Values: "list of raw fzf bind strings in the same KEY:ACTION, EVENT:ACTION, or KEY:ACTION+ACTION format.", Extras: []cmdhelp.LabelLine{{Label: "templates", Text: ummconfig.KeybindBindTemplateHelp(ummconfig.KeybindModeGit)}}},
 					{Path: "editors.<name>.cmd", What: "Sets the executable used when the matching editor alias is detected from $EDITOR.", Values: "required non-empty command name or absolute path when the editor entry is present."},
 					{Path: "editors.<name>.args", What: "Adds extra argv segments before any rendered target arguments.", Values: "list of strings; path-template rendering is applied to each item and empty results are dropped."},
 					{Path: "editors.<name>.first-target", What: "Builds the target argv for the first selected result, including line-aware forms.", Values: "list of path-template strings; can include conditional line handling such as {{if .HasLine}}...{{end}}."},
@@ -66,7 +66,8 @@ func configHelpDoc() cmdhelp.Document {
 				Extras: []cmdhelp.LabelLine{
 					{Label: "path args", Text: "Path, Line, HasLine, StartLine, EndLine, LineRange."},
 					{Label: "diff args", Text: "Repo, GitType, GitRef, Path, Display, Summary."},
-					{Label: "keybinds", Text: "ReloadCommand, PreviewCommand."},
+					{Label: "normal bind", Text: ummconfig.KeybindTemplateVariablesText(ummconfig.KeybindModeNormal)},
+					{Label: "git bind", Text: ummconfig.KeybindTemplateVariablesText(ummconfig.KeybindModeGit)},
 				},
 			},
 			{
