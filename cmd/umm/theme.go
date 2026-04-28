@@ -73,9 +73,13 @@ func buildThemeDumpCmd() *cobra.Command {
 func runThemeListCmd(cmd *cobra.Command) (err error) {
 	defer errors.Recover(&err)
 
-	selectedTheme := ummconfig.Defaults().Theme
+	selectedTheme := ""
 	if loaded, loadErr := ummconfig.LoadEffective(); loadErr == nil {
 		selectedTheme = loaded.Config.Theme
+	} else {
+		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "warning: active theme could not be determined: %v\n", loadErr); err != nil {
+			return errors.Wrap(err)
+		}
 	}
 	configDir := errors.MustResult(ummconfig.ResolveConfigDir())
 	catalog := errors.MustResult(ummtheme.Discover(configDir))
