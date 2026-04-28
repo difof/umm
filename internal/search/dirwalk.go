@@ -39,6 +39,7 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 	defer cancel()
 
 	report := dirWalkReport{}
+	useGitIgnorePrune := !cfg.Hidden && isGitWorktree(ctx, cfg.Root)
 
 	jobs := make(chan dirJob, dirWalkWorkerCount()*2)
 	results := make(chan dirCandidate, dirWalkWorkerCount()*8)
@@ -47,10 +48,20 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 	var pending sync.WaitGroup
 	var workers sync.WaitGroup
 	var warningsMu sync.Mutex
+	var failOnce sync.Once
 	recordWarning := func(path string, err error) {
 		warningsMu.Lock()
 		report.Warnings = append(report.Warnings, dirWalkWarning{Path: path, Err: err})
 		warningsMu.Unlock()
+	}
+	recordFailure := func(err error) {
+		failOnce.Do(func() {
+			select {
+			case errs <- err:
+			default:
+			}
+			cancel()
+		})
 	}
 
 	processDir := func(job dirJob) {
@@ -60,6 +71,8 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 			return
 		}
 
+		children := make([]dirCandidate, 0, len(entries))
+		childJobs := make([]dirJob, 0, len(entries))
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
@@ -83,7 +96,23 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 			}
 
 			childAbs := filepath.Join(job.abs, name)
-			candidate := dirCandidate{abs: childAbs, rel: childRel}
+			children = append(children, dirCandidate{abs: childAbs, rel: childRel})
+			childJobs = append(childJobs, dirJob{abs: childAbs, rel: childRel, depth: childDepth})
+		}
+
+		ignored := map[string]struct{}{}
+		if useGitIgnorePrune {
+			ignored, err = ignoredDirKeys(ctx, cfg.Root, children)
+			if err != nil {
+				recordFailure(err)
+				return
+			}
+		}
+
+		for i, candidate := range children {
+			if _, ok := ignored[candidate.rel]; ok {
+				continue
+			}
 
 			select {
 			case <-ctx.Done():
@@ -96,7 +125,7 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 			case <-ctx.Done():
 				pending.Done()
 				return
-			case jobs <- dirJob{abs: childAbs, rel: childRel, depth: childDepth}:
+			case jobs <- childJobs[i]:
 			}
 		}
 	}
@@ -142,16 +171,14 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 		}
 		if err := visit(candidate); err != nil {
 			visitErr = err
-			cancel()
-			select {
-			case errs <- err:
-			default:
-			}
+			recordFailure(err)
 		}
 	}
 
-	if visitErr != nil {
-		return dirWalkReport{}, errors.Wrap(visitErr)
+	select {
+	case err := <-errs:
+		return dirWalkReport{}, errors.Wrap(err)
+	default:
 	}
 	if err := ctx.Err(); err != nil && err != context.Canceled {
 		return dirWalkReport{}, errors.Wrap(err)
@@ -164,12 +191,35 @@ func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) 
 }
 
 func filterIgnoredDirCandidates(ctx context.Context, root string, candidates []dirCandidate) ([]dirCandidate, error) {
-	if len(candidates) == 0 {
+	if !isGitWorktree(ctx, root) {
 		return candidates, nil
 	}
 
-	if _, err := execx.Output(ctx, root, nil, "git", "-C", root, "rev-parse", "--show-toplevel"); err != nil {
-		return candidates, nil
+	ignored, err := ignoredDirKeys(ctx, root, candidates)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+
+	filtered := make([]dirCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		key := strings.TrimSuffix(candidate.rel, "/")
+		if _, ok := ignored[key]; ok {
+			continue
+		}
+		filtered = append(filtered, candidate)
+	}
+
+	return filtered, nil
+}
+
+func isGitWorktree(ctx context.Context, root string) bool {
+	_, err := execx.Output(ctx, root, nil, "git", "-C", root, "rev-parse", "--show-toplevel")
+	return err == nil
+}
+
+func ignoredDirKeys(ctx context.Context, root string, candidates []dirCandidate) (map[string]struct{}, error) {
+	if len(candidates) == 0 {
+		return map[string]struct{}{}, nil
 	}
 
 	var input strings.Builder
@@ -181,6 +231,9 @@ func filterIgnoredDirCandidates(ctx context.Context, root string, candidates []d
 		input.WriteString(key)
 		input.WriteByte('/')
 		input.WriteByte('\n')
+	}
+	if input.Len() == 0 {
+		return map[string]struct{}{}, nil
 	}
 
 	ignoredOutput, err := execx.CombinedOutput(ctx, root, nil, strings.NewReader(input.String()), "git", "-C", root, "check-ignore", "--stdin")
@@ -198,16 +251,7 @@ func filterIgnoredDirCandidates(ctx context.Context, root string, candidates []d
 		ignored[line] = struct{}{}
 	}
 
-	filtered := make([]dirCandidate, 0, len(candidates))
-	for _, candidate := range candidates {
-		key := strings.TrimSuffix(candidate.rel, "/")
-		if _, ok := ignored[key]; ok {
-			continue
-		}
-		filtered = append(filtered, candidate)
-	}
-
-	return filtered, nil
+	return ignored, nil
 }
 
 func dirWalkWorkerCount() int {
