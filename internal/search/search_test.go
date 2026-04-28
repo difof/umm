@@ -3,6 +3,7 @@ package search
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -158,6 +159,46 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("dirname search prunes gitignored unreadable directories", func(t *testing.T) {
+		repo := t.TempDir()
+		writeFile(t, filepath.Join(repo, ".gitignore"), "ignored/\n")
+		if err := os.MkdirAll(filepath.Join(repo, "visible", "child"), 0o755); err != nil {
+			t.Fatalf("MkdirAll visible: %v", err)
+		}
+		ignored := filepath.Join(repo, "ignored")
+		if err := os.MkdirAll(filepath.Join(ignored, "child"), 0o755); err != nil {
+			t.Fatalf("MkdirAll ignored: %v", err)
+		}
+		runGitCommand(t, repo, "init")
+		if err := os.Chmod(ignored, 0o000); err != nil {
+			t.Fatalf("Chmod ignored: %v", err)
+		}
+		defer func() {
+			_ = os.Chmod(ignored, 0o755)
+		}()
+		if _, err := os.ReadDir(ignored); err == nil {
+			t.Skip("test environment can still read chmod 000 directories")
+		}
+
+		cfg := cli.RootConfig{Root: repo, SearchMode: cli.SearchModeOnlyDirname}
+		var warnings bytes.Buffer
+		results, err := QueryWithErrorOutput(t.Context(), cfg, "ignored|visible", true, &warnings)
+		if err != nil {
+			t.Fatalf("Query returned error: %v", err)
+		}
+		if len(results) == 0 {
+			t.Fatal("expected visible dirname results")
+		}
+		for _, result := range results {
+			if strings.Contains(result.Path, ignored) {
+				t.Fatalf("expected gitignored path %q to be pruned from results, got %#v", ignored, results)
+			}
+		}
+		if strings.Contains(warnings.String(), ignored) {
+			t.Fatalf("expected gitignored path %q to be pruned before warnings, got %q", ignored, warnings.String())
+		}
+	})
+
 	t.Run("dirname query results are sorted", func(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(root, "zzz"), 0o755); err != nil {
 			t.Fatalf("MkdirAll zzz: %v", err)
@@ -248,5 +289,15 @@ func writeFile(t *testing.T, path string, content string) {
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q): %v", path, err)
+	}
+}
+
+func runGitCommand(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, output)
 	}
 }
