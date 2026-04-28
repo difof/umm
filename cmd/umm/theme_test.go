@@ -60,6 +60,30 @@ func TestThemeListContinuesWhenUserThemeCannotBeRead(t *testing.T) {
 	}
 }
 
+func TestThemeListWarnsAndOmitsActiveWhenConfigLoadFails(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("HOME", t.TempDir())
+	writeTestFile(t, filepath.Join(xdg, "umm", "umm.yml"), "theme: [\n")
+
+	cmd := BuildThemeCmd()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"list"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if strings.Contains(stdout.String(), "active") {
+		t.Fatalf("expected no active theme when config load fails, got %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "warning: active theme could not be determined") {
+		t.Fatalf("expected config-load warning, got %q", stderr.String())
+	}
+}
+
 func TestThemeSetCreatesStarterConfigWhenMissing(t *testing.T) {
 	xdg := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", xdg)
