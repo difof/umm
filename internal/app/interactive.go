@@ -9,15 +9,15 @@ import (
 	"strings"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/gitsearch"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 	ummtheme "github.com/difof/umm/internal/theme"
 )
 
-func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, errOut io.Writer) ([]resultfmt.Result, error) {
+func runNormalInteractive(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, errOut io.Writer) ([]resultfmt.Result, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -75,7 +75,7 @@ func runNormalInteractive(ctx context.Context, cfg cli.RootConfig, appConfig umm
 	return results, nil
 }
 
-func runGitInteractive(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, errOut io.Writer) ([]resultfmt.Result, bool, error) {
+func runGitInteractive(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, errOut io.Writer) ([]resultfmt.Result, bool, error) {
 	results, err := gitsearch.Aggregate(ctx, cfg, appConfig)
 	if err != nil {
 		return nil, false, errors.Wrap(err)
@@ -175,7 +175,7 @@ func buildBindArgs(binds []string, data ummconfig.KeybindTemplateData) ([]string
 	return args, nil
 }
 
-func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {
+func buildEmitSearchCommand(exe string, cfg ummruntime.RootConfig) string {
 	parts := []string{shellQuote(exe)}
 	for _, arg := range buildEmitReloadArgs(cfg) {
 		if arg == "{q}" {
@@ -187,7 +187,7 @@ func buildEmitSearchCommand(exe string, cfg cli.RootConfig) string {
 	return strings.Join(parts, " ")
 }
 
-func buildEmitReloadArgs(cfg cli.RootConfig) []string {
+func buildEmitReloadArgs(cfg ummruntime.RootConfig) []string {
 	args := []string{"__emit-search", "--pattern", "{q}", "--root", cfg.Root}
 	for _, pattern := range cfg.Excludes {
 		args = append(args, "--exclude", pattern)
@@ -211,7 +211,7 @@ func buildEmitReloadArgs(cfg cli.RootConfig) []string {
 	return args
 }
 
-func buildEmitArgs(cfg cli.RootConfig, patternStdin bool) []string {
+func buildEmitArgs(cfg ummruntime.RootConfig, patternStdin bool) []string {
 	args := []string{"__emit-search"}
 	if patternStdin {
 		args = append(args, "--pattern-stdin")
@@ -241,7 +241,7 @@ func buildEmitArgs(cfg cli.RootConfig, patternStdin bool) []string {
 	return args
 }
 
-func startNormalSearchInput(ctx context.Context, exe string, cfg cli.RootConfig, errOut io.Writer) io.Reader {
+func startNormalSearchInput(ctx context.Context, exe string, cfg ummruntime.RootConfig, errOut io.Writer) io.Reader {
 	reader, writer := io.Pipe()
 	go func() {
 		args := buildEmitArgs(cfg, true)
