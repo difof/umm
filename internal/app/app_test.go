@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/deps"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 func TestBuildGitHeader(t *testing.T) {
@@ -34,7 +34,7 @@ func TestBuildGitHeader(t *testing.T) {
 }
 
 func TestBuildEmitArgs(t *testing.T) {
-	cfg := cli.RootConfig{
+	cfg := ummruntime.RootConfig{
 		Root:         "/tmp/project",
 		Excludes:     []string{"*.tmp", "vendor/**"},
 		Hidden:       true,
@@ -77,7 +77,7 @@ func TestBuildBindArgsRendersTemplates(t *testing.T) {
 }
 
 func TestRunGitNoUISystemRequiresTrackedFiles(t *testing.T) {
-	err := runGitNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{GitType: "commit", GitRef: "abc"}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
+	err := runGitNoUI(t.Context(), ummruntime.RootConfig{Action: ummruntime.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{GitType: "commit", GitRef: "abc"}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "no tracked file results available") {
 		t.Fatalf("runGitNoUI() error = %v, want tracked-file error", err)
 	}
@@ -91,7 +91,7 @@ func TestRunNormalNoUIAskRoutesToStat(t *testing.T) {
 
 	results := []resultfmt.Result{{Path: first}, {Path: second}}
 	var output bytes.Buffer
-	if err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionAsk}, ummconfig.Defaults(), results, nil, &output, &bytes.Buffer{}); err != nil {
+	if err := runNormalNoUI(t.Context(), ummruntime.RootConfig{Action: ummruntime.ActionAsk}, ummconfig.Defaults(), results, nil, &output, &bytes.Buffer{}); err != nil {
 		t.Fatalf("runNormalNoUI() returned error: %v", err)
 	}
 
@@ -113,7 +113,7 @@ func TestRunNormalNoUISystemUsesFirstResult(t *testing.T) {
 		t.Fatalf("Setenv PATH: %v", err)
 	}
 
-	err := runNormalNoUI(t.Context(), cli.RootConfig{Action: cli.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
+	err := runNormalNoUI(t.Context(), ummruntime.RootConfig{Action: ummruntime.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("runNormalNoUI() returned error: %v", err)
 	}
@@ -135,13 +135,13 @@ func TestRunRootNormalNoUIIntegration(t *testing.T) {
 
 	root := t.TempDir()
 	path := writeFile(t, root, "nested/needle.txt", "alpha\nneedle\nomega\n")
-	cfg := cli.RootConfig{
+	cfg := ummruntime.RootConfig{
 		Root:       root,
 		Pattern:    "needle",
 		NoUI:       true,
-		SearchMode: cli.SearchModeDefault,
-		Action:     cli.ActionStat,
-		StatMode:   cli.StatModeList,
+		SearchMode: ummruntime.SearchModeDefault,
+		Action:     ummruntime.ActionStat,
+		StatMode:   ummruntime.StatModeList,
 	}
 
 	var output bytes.Buffer
@@ -167,12 +167,12 @@ func TestRunRootGitNoUIIntegration(t *testing.T) {
 	runGitCommand(t, root, "add", ".")
 	runGitCommand(t, root, "commit", "-m", "initial")
 
-	cfg := cli.RootConfig{
+	cfg := ummruntime.RootConfig{
 		Root:       root,
 		Pattern:    "tracked",
 		NoUI:       true,
-		SearchMode: cli.SearchModeGit,
-		Action:     cli.ActionDefault,
+		SearchMode: ummruntime.SearchModeGit,
+		Action:     ummruntime.ActionDefault,
 		GitModes:   []string{"tracked"},
 	}
 
