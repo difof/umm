@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/difof/umm/internal/cli"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 func TestQuery(t *testing.T) {
@@ -28,7 +28,7 @@ func TestQuery(t *testing.T) {
 	}
 
 	t.Run("default search finds content", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeDefault}
 		results, err := Query(t.Context(), cfg, "needle", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -41,7 +41,7 @@ func TestQuery(t *testing.T) {
 	t.Run("content search accepts single-dash patterns", func(t *testing.T) {
 		writeFile(t, filepath.Join(root, "dash.txt"), "-foo line\n")
 
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeDefault}
 		results, err := Query(t.Context(), cfg, "-foo", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -54,7 +54,7 @@ func TestQuery(t *testing.T) {
 	t.Run("content search accepts double-dash patterns", func(t *testing.T) {
 		writeFile(t, filepath.Join(root, "double-dash.txt"), "--help text\n")
 
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeDefault}
 		results, err := Query(t.Context(), cfg, "--help", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -65,7 +65,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("filename search finds file path only", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyFilename}
 		results, err := Query(t.Context(), cfg, "root\\.go", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -76,7 +76,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("dirname search returns directory paths", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname}
 		results, err := Query(t.Context(), cfg, "cmd", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -87,7 +87,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("dirname search finds empty directories", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname}
 		results, err := Query(t.Context(), cfg, "emptydir", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -98,7 +98,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("dirname search excludes hidden directories by default", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname}
 		results, err := Query(t.Context(), cfg, "hidden-empty", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -109,7 +109,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("dirname search includes hidden directories when enabled", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname, Hidden: true}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname, Hidden: true}
 		results, err := Query(t.Context(), cfg, "hidden-empty", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -120,7 +120,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("dirname search honors excludes", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname, Excludes: []string{"skipme/**", "skipme/"}}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname, Excludes: []string{"skipme/**", "skipme/"}}
 		results, err := Query(t.Context(), cfg, "skipme", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -145,7 +145,7 @@ func TestQuery(t *testing.T) {
 			t.Skip("test environment can still read chmod 000 directories")
 		}
 
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname}
 		var warnings bytes.Buffer
 		results, err := QueryWithErrorOutput(t.Context(), cfg, "locked|cmd", true, &warnings)
 		if err != nil {
@@ -180,7 +180,7 @@ func TestQuery(t *testing.T) {
 			t.Skip("test environment can still read chmod 000 directories")
 		}
 
-		cfg := cli.RootConfig{Root: repo, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: repo, SearchMode: ummruntime.SearchModeOnlyDirname}
 		var warnings bytes.Buffer
 		results, err := QueryWithErrorOutput(t.Context(), cfg, "ignored|visible", true, &warnings)
 		if err != nil {
@@ -207,7 +207,7 @@ func TestQuery(t *testing.T) {
 			t.Fatalf("MkdirAll aaa: %v", err)
 		}
 
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname}
 		results, err := Query(t.Context(), cfg, ".", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -220,7 +220,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("hidden search excludes dot paths by default", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyFilename}
 		results, err := Query(t.Context(), cfg, "secret\\.txt", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -231,7 +231,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("hidden flag includes dot paths", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename, Hidden: true}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyFilename, Hidden: true}
 		results, err := Query(t.Context(), cfg, "secret\\.txt", true)
 		if err != nil {
 			t.Fatalf("Query returned error: %v", err)
@@ -249,7 +249,7 @@ func TestEmitLinesHighlightsMatches(t *testing.T) {
 	writeFile(t, filepath.Join(root, "a.txt"), "needle one\n")
 
 	t.Run("filename matches are highlighted", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyFilename}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyFilename}
 		var out bytes.Buffer
 		if err := EmitLines(t.Context(), cfg, `root\.go`, &out); err != nil {
 			t.Fatalf("EmitLines returned error: %v", err)
@@ -260,7 +260,7 @@ func TestEmitLinesHighlightsMatches(t *testing.T) {
 	})
 
 	t.Run("dirname matches are highlighted", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeOnlyDirname}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeOnlyDirname}
 		var out bytes.Buffer
 		if err := EmitLines(t.Context(), cfg, `cmd`, &out); err != nil {
 			t.Fatalf("EmitLines returned error: %v", err)
@@ -271,7 +271,7 @@ func TestEmitLinesHighlightsMatches(t *testing.T) {
 	})
 
 	t.Run("content matches are highlighted", func(t *testing.T) {
-		cfg := cli.RootConfig{Root: root, SearchMode: cli.SearchModeDefault}
+		cfg := ummruntime.RootConfig{Root: root, SearchMode: ummruntime.SearchModeDefault}
 		var out bytes.Buffer
 		if err := EmitLines(t.Context(), cfg, `needle`, &out); err != nil {
 			t.Fatalf("EmitLines returned error: %v", err)
