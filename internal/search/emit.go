@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/jsonx"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 type rgJSONLine struct {
@@ -27,7 +27,7 @@ type rgJSONLine struct {
 	} `json:"data"`
 }
 
-func emitContent(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
+func emitContent(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool, emit resultEmitter) error {
 	args := []string{"--json", "--line-number", "--no-heading", "--smart-case"}
 	if cfg.MaxDepth > 0 {
 		args = append(args, "--max-depth", itoa(cfg.MaxDepth))
@@ -94,7 +94,7 @@ func emitContent(ctx context.Context, cfg cli.RootConfig, query string, strict b
 	return nil
 }
 
-func emitFilenames(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
+func emitFilenames(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool, emit resultEmitter) error {
 	matcher, err := compileSmartRegex(query)
 	if err != nil {
 		if strict {
@@ -133,7 +133,7 @@ func emitFilenames(ctx context.Context, cfg cli.RootConfig, query string, strict
 	return nil
 }
 
-func emitDirnames(ctx context.Context, cfg cli.RootConfig, query string, strict bool, warningOut io.Writer, emit resultEmitter) error {
+func emitDirnames(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool, warningOut io.Writer, emit resultEmitter) error {
 	matcher, err := compileSmartRegex(query)
 	if err != nil {
 		if strict {
@@ -211,7 +211,7 @@ func reportDirWalkWarnings(out io.Writer, warnings []dirWalkWarning) {
 	_, _ = io.WriteString(out, strings.Join(lines, "\n")+"\n")
 }
 
-func buildFilesArgs(cfg cli.RootConfig) []string {
+func buildFilesArgs(cfg ummruntime.RootConfig) []string {
 	args := []string{"--files"}
 	if cfg.MaxDepth > 0 {
 		args = append(args, "--max-depth", itoa(cfg.MaxDepth))
