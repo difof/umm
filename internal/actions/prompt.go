@@ -10,10 +10,10 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/editor"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []resultfmt.Result, isGit bool, in io.Reader, out io.Writer, errOut io.Writer) error {
@@ -51,7 +51,7 @@ func PromptAction(ctx context.Context, appConfig ummconfig.Config, results []res
 		if isGit {
 			return RenderGitStats(out, results)
 		}
-		return RenderPathStats(out, cli.StatModeFull, results)
+		return RenderPathStats(out, ummruntime.StatModeFull, results)
 	default:
 		return errors.Newf("unsupported action %q", choice)
 	}
