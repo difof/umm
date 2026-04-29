@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 func TestAggregateAndQuery(t *testing.T) {
@@ -25,7 +25,7 @@ func TestAggregateAndQuery(t *testing.T) {
 	writeGitFile(t, root, "tracked.txt", "hello\nchange\n")
 	runGit(t, root, "stash", "push", "-m", "temp stash")
 
-	cfg := cli.RootConfig{Root: root, GitModes: cli.AllGitModes}
+	cfg := ummruntime.RootConfig{Root: root, GitModes: []string{"commit", "branch", "tags", "reflog", "stash", "tracked"}}
 	results, err := Aggregate(t.Context(), cfg, ummconfig.Defaults())
 	if err != nil {
 		t.Fatalf("Aggregate returned error: %v", err)
@@ -62,7 +62,7 @@ func TestAggregateRespectsConfiguredLimits(t *testing.T) {
 	appConfig := ummconfig.Defaults()
 	appConfig.Git.Limits.Commits = 1
 	appConfig.Git.Limits.Tracked = 1
-	cfg := cli.RootConfig{Root: root, GitModes: []string{"commit", "tracked"}}
+	cfg := ummruntime.RootConfig{Root: root, GitModes: []string{"commit", "tracked"}}
 
 	results, err := Aggregate(t.Context(), cfg, appConfig)
 	if err != nil {
@@ -98,7 +98,7 @@ func TestAggregateRespectsBranchLimit(t *testing.T) {
 
 	appConfig := ummconfig.Defaults()
 	appConfig.Git.Limits.Branches = 1
-	cfg := cli.RootConfig{Root: root, GitModes: []string{"branch"}}
+	cfg := ummruntime.RootConfig{Root: root, GitModes: []string{"branch"}}
 
 	results, err := Aggregate(t.Context(), cfg, appConfig)
 	if err != nil {
