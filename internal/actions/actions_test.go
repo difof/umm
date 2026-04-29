@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 func TestRenderPathStatsDeduplicatesPaths(t *testing.T) {
@@ -16,7 +16,7 @@ func TestRenderPathStatsDeduplicatesPaths(t *testing.T) {
 	results := []resultfmt.Result{{Path: path}, {Path: path}}
 
 	var out bytes.Buffer
-	if err := RenderPathStats(&out, cli.StatModeLite, results); err != nil {
+	if err := RenderPathStats(&out, ummruntime.StatModeLite, results); err != nil {
 		t.Fatalf("RenderPathStats returned error: %v", err)
 	}
 
