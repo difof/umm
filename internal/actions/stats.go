@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
-func RenderPathStats(out io.Writer, mode cli.StatMode, results []resultfmt.Result) error {
+func RenderPathStats(out io.Writer, mode ummruntime.StatMode, results []resultfmt.Result) error {
 	results = uniqueByPath(results)
 	for index, result := range results {
 		if result.Path == "" {
 			continue
 		}
 
-		if mode == cli.StatModeList {
+		if mode == ummruntime.StatModeList {
 			if _, err := io.WriteString(out, result.Path+"\n"); err != nil {
 				return errors.Wrap(err)
 			}
@@ -31,7 +31,7 @@ func RenderPathStats(out io.Writer, mode cli.StatMode, results []resultfmt.Resul
 			return errors.Wrap(err)
 		}
 
-		if mode == cli.StatModeLite {
+		if mode == ummruntime.StatModeLite {
 			line := fmt.Sprintf("%s %s %s %s\n", fileTypeLabel(info), humanSize(info), info.ModTime().Format(time.RFC3339), result.Path)
 			if _, err := io.WriteString(out, line); err != nil {
 				return errors.Wrap(err)
@@ -62,7 +62,7 @@ func RenderPathStats(out io.Writer, mode cli.StatMode, results []resultfmt.Resul
 func RenderGitStats(out io.Writer, results []resultfmt.Result) error {
 	for _, result := range results {
 		if result.GitType == "tracked" {
-			if err := RenderPathStats(out, cli.StatModeLite, []resultfmt.Result{result}); err != nil {
+			if err := RenderPathStats(out, ummruntime.StatModeLite, []resultfmt.Result{result}); err != nil {
 				return errors.Wrap(err)
 			}
 			continue
