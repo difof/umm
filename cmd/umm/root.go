@@ -5,13 +5,12 @@ import (
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/app"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/spf13/cobra"
 )
 
 func BuildRootCmd(workingDir string) *cobra.Command {
-	options := cli.RawRootOptions{}
+	options := rawRootOptions{}
 
 	rootCmd := &cobra.Command{
 		Use:   "umm",
@@ -49,13 +48,13 @@ Use "umm --help" for more information.`,
 	rootCmd.Flags().BoolVarP(&options.OpenSys, "open-sys", "o", false, "open selected result using the system handler")
 	rootCmd.Flags().StringVar(&options.OnlyStat, "only-stat", "", "show stat output instead of opening (full,lite,list)")
 
-	_ = rootCmd.RegisterFlagCompletionFunc("git-mode", cobra.FixedCompletions(cli.AllGitModes, cobra.ShellCompDirectiveNoFileComp))
-	_ = rootCmd.RegisterFlagCompletionFunc("only-stat", cobra.FixedCompletions(cli.AllStatModes, cobra.ShellCompDirectiveNoFileComp))
+	_ = rootCmd.RegisterFlagCompletionFunc("git-mode", cobra.FixedCompletions(allGitModes, cobra.ShellCompDirectiveNoFileComp))
+	_ = rootCmd.RegisterFlagCompletionFunc("only-stat", cobra.FixedCompletions(allStatModes, cobra.ShellCompDirectiveNoFileComp))
 
 	return rootCmd
 }
 
-func runRootCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
+func runRootCmd(cmd *cobra.Command, options rawRootOptions) (err error) {
 	defer errors.Recover(&err)
 
 	loaded := errors.MustResult(ummconfig.LoadEffective())
@@ -65,7 +64,7 @@ func runRootCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
 	options.DefaultGitModes = loaded.Config.Git.DefaultModes
 	options.GitModesExplicit = cmd.Flags().Changed("git-mode")
 
-	runtime := errors.MustResult(cli.NormalizeRootOptions(options))
+	runtime := errors.MustResult(normalizeRootOptions(options))
 	if err := app.RunRootWithIO(cmd.Context(), runtime, loaded.Config, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		return errors.Wrap(err)
 	}
