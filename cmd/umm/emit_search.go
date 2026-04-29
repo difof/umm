@@ -6,12 +6,11 @@ import (
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/app"
-	"github.com/difof/umm/internal/cli"
 	"github.com/spf13/cobra"
 )
 
 func BuildEmitSearchCmd() *cobra.Command {
-	options := cli.RawRootOptions{}
+	options := rawRootOptions{}
 	patternStdin := false
 
 	emitCmd := &cobra.Command{
@@ -37,7 +36,7 @@ func BuildEmitSearchCmd() *cobra.Command {
 	return emitCmd
 }
 
-func runEmitSearchCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error) {
+func runEmitSearchCmd(cmd *cobra.Command, options rawRootOptions) (err error) {
 	defer errors.Recover(&err)
 
 	patternStdin, err := cmd.Flags().GetBool("pattern-stdin")
@@ -52,7 +51,7 @@ func runEmitSearchCmd(cmd *cobra.Command, options cli.RawRootOptions) (err error
 		options.Pattern = strings.TrimRight(string(data), "\r\n")
 	}
 
-	config := errors.MustResult(cli.NormalizeEmitterOptions(options))
+	config := errors.MustResult(normalizeEmitterOptions(options))
 	if err := app.EmitSearch(cmd.Context(), config, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		return errors.Wrap(err)
 	}
