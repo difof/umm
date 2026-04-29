@@ -6,8 +6,8 @@ import (
 	"sort"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 type resultEmitter func(resultfmt.Result) error
@@ -17,11 +17,11 @@ const (
 	matchResetANSI = "\x1b[0m"
 )
 
-func Query(ctx context.Context, cfg cli.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
+func Query(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool) ([]resultfmt.Result, error) {
 	return QueryWithErrorOutput(ctx, cfg, query, strict, nil)
 }
 
-func QueryWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query string, strict bool, errOut io.Writer) ([]resultfmt.Result, error) {
+func QueryWithErrorOutput(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool, errOut io.Writer) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
 	err := emitQuery(ctx, cfg, query, strict, errOut, func(result resultfmt.Result) error {
 		results = append(results, result)
@@ -30,7 +30,7 @@ func QueryWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query string,
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	if cfg.SearchMode == cli.SearchModeOnlyDirname {
+	if cfg.SearchMode == ummruntime.SearchModeOnlyDirname {
 		sort.Slice(results, func(i int, j int) bool {
 			return results[i].Display < results[j].Display
 		})
@@ -39,11 +39,11 @@ func QueryWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query string,
 	return results, nil
 }
 
-func EmitLines(ctx context.Context, cfg cli.RootConfig, query string, out io.Writer) error {
+func EmitLines(ctx context.Context, cfg ummruntime.RootConfig, query string, out io.Writer) error {
 	return EmitLinesWithErrorOutput(ctx, cfg, query, out, nil)
 }
 
-func EmitLinesWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query string, out io.Writer, errOut io.Writer) error {
+func EmitLinesWithErrorOutput(ctx context.Context, cfg ummruntime.RootConfig, query string, out io.Writer, errOut io.Writer) error {
 	return emitQuery(ctx, cfg, query, false, errOut, func(result resultfmt.Result) error {
 		result.Display = highlightDisplay(result.Display, query)
 
@@ -60,20 +60,20 @@ func EmitLinesWithErrorOutput(ctx context.Context, cfg cli.RootConfig, query str
 	})
 }
 
-func emitQuery(ctx context.Context, cfg cli.RootConfig, query string, strict bool, errOut io.Writer, emit resultEmitter) error {
+func emitQuery(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool, errOut io.Writer, emit resultEmitter) error {
 	switch cfg.SearchMode {
-	case cli.SearchModeOnlyDirname:
+	case ummruntime.SearchModeOnlyDirname:
 		return emitDirnames(ctx, cfg, query, strict, errOut, emit)
-	case cli.SearchModeOnlyFilename:
+	case ummruntime.SearchModeOnlyFilename:
 		return emitFilenames(ctx, cfg, query, strict, emit)
-	case cli.SearchModeDefault:
+	case ummruntime.SearchModeDefault:
 		return emitDefault(ctx, cfg, query, strict, emit)
 	default:
 		return errors.Newf("unsupported search mode %q", cfg.SearchMode)
 	}
 }
 
-func emitDefault(ctx context.Context, cfg cli.RootConfig, query string, strict bool, emit resultEmitter) error {
+func emitDefault(ctx context.Context, cfg ummruntime.RootConfig, query string, strict bool, emit resultEmitter) error {
 	if query == "" {
 		if cfg.NoFilename {
 			return nil
