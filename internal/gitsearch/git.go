@@ -8,15 +8,15 @@ import (
 	"strings"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/execx"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 var errCollectLimitReached = errors.New("git result limit reached")
 
-func Query(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, query string, strict bool) ([]resultfmt.Result, error) {
+func Query(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, query string, strict bool) ([]resultfmt.Result, error) {
 	results, err := Aggregate(ctx, cfg, appConfig)
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -25,7 +25,7 @@ func Query(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, 
 	return filterResults(results, query, strict)
 }
 
-func Aggregate(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
+func Aggregate(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config) ([]resultfmt.Result, error) {
 	results := []resultfmt.Result{}
 	limits := appConfig.Git.Limits
 
