@@ -6,17 +6,17 @@ import (
 	"os"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/preview"
+	ummruntime "github.com/difof/umm/internal/runtime"
 	"github.com/difof/umm/internal/search"
 )
 
-func RunRoot(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config) (err error) {
+func RunRoot(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config) (err error) {
 	return RunRootWithIO(ctx, cfg, appConfig, nil, nil, nil)
 }
 
-func RunRootWithIO(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) (err error) {
+func RunRootWithIO(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) (err error) {
 	defer errors.Recover(&err)
 	if in == nil {
 		in = os.Stdin
@@ -28,7 +28,7 @@ func RunRootWithIO(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.
 		errOut = os.Stderr
 	}
 
-	if cfg.SearchMode == cli.SearchModeGit {
+	if cfg.SearchMode == ummruntime.SearchModeGit {
 		return runGit(ctx, cfg, appConfig, in, out, errOut)
 	}
 
@@ -39,6 +39,6 @@ func RunPreview(ctx context.Context, appConfig ummconfig.Config, mode string, me
 	return preview.Run(ctx, appConfig, mode, meta, out)
 }
 
-func EmitSearch(ctx context.Context, cfg cli.RootConfig, out io.Writer, errOut io.Writer) error {
+func EmitSearch(ctx context.Context, cfg ummruntime.RootConfig, out io.Writer, errOut io.Writer) error {
 	return search.EmitLinesWithErrorOutput(ctx, cfg, cfg.Pattern, out, errOut)
 }
