@@ -106,14 +106,18 @@ func TestRunNormalNoUISystemUsesFirstResult(t *testing.T) {
 	second := writeFile(t, root, "b.txt", "two\n")
 	shimDir := t.TempDir()
 	logPath := filepath.Join(shimDir, "open.log")
-	writeExecutable(t, filepath.Join(shimDir, "open"), "#!/bin/sh\nprintf '%s\n' \"$1\" >> \""+logPath+"\"\n")
+	command, err := deps.SystemOpenCommand()
+	if err != nil {
+		t.Fatalf("SystemOpenCommand() returned error: %v", err)
+	}
+	writeExecutable(t, filepath.Join(shimDir, command), "#!/bin/sh\nprintf '%s\n' \"$1\" >> \""+logPath+"\"\n")
 	oldPath := os.Getenv("PATH")
 	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
 	if err := os.Setenv("PATH", shimDir); err != nil {
 		t.Fatalf("Setenv PATH: %v", err)
 	}
 
-	err := runNormalNoUI(t.Context(), ummruntime.RootConfig{Action: ummruntime.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
+	err = runNormalNoUI(t.Context(), ummruntime.RootConfig{Action: ummruntime.ActionSystem}, ummconfig.Defaults(), []resultfmt.Result{{Path: first}, {Path: second}}, nil, &bytes.Buffer{}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("runNormalNoUI() returned error: %v", err)
 	}
