@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"github.com/difof/errors"
-	"github.com/difof/umm/internal/cli"
 	"github.com/difof/umm/internal/execx"
+	ummruntime "github.com/difof/umm/internal/runtime"
 )
 
 type dirCandidate struct {
@@ -34,7 +34,7 @@ type dirWalkReport struct {
 	Warnings []dirWalkWarning
 }
 
-func walkDirs(ctx context.Context, cfg cli.RootConfig, visit func(dirCandidate) error) (dirWalkReport, error) {
+func walkDirs(ctx context.Context, cfg ummruntime.RootConfig, visit func(dirCandidate) error) (dirWalkReport, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
