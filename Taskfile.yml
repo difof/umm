@@ -1,6 +1,36 @@
 version: '3'
 
 tasks:
+  deps:check:ci:
+    cmds:
+      - |
+        set -eu
+
+        missing=0
+
+        check() {
+          tool="$1"
+          hint="$2"
+          if command -v "$tool" >/dev/null 2>&1; then
+            return
+          fi
+
+          printf 'missing required tool for task ci: %s (%s)\n' "$tool" "$hint" >&2
+          missing=1
+        }
+
+        check go 'install Go and ensure it is on PATH'
+        check rg 'install ripgrep and ensure `rg` is on PATH'
+        check git 'install git and ensure it is on PATH'
+
+        if [ "$(go env GOOS)" = "linux" ]; then
+          check xdg-open 'install xdg-utils and ensure `xdg-open` is on PATH'
+        fi
+
+        if [ "$missing" -ne 0 ]; then
+          exit 1
+        fi
+
   test:
     cmds:
       - go test ./...
@@ -23,5 +53,6 @@ tasks:
 
   ci:
     cmds:
+      - task deps:check:ci
       - task test
       - task build
