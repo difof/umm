@@ -7,15 +7,15 @@ import (
 
 	"github.com/difof/errors"
 	"github.com/difof/umm/internal/actions"
-	"github.com/difof/umm/internal/cli"
 	ummconfig "github.com/difof/umm/internal/config"
 	"github.com/difof/umm/internal/deps"
 	"github.com/difof/umm/internal/gitsearch"
 	"github.com/difof/umm/internal/resultfmt"
+	ummruntime "github.com/difof/umm/internal/runtime"
 	"github.com/difof/umm/internal/search"
 )
 
-func runNormal(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) error {
+func runNormal(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) error {
 	if cfg.UsesRG() {
 		if err := deps.Require("rg", "normal search"); err != nil {
 			return errors.Wrap(err)
@@ -48,7 +48,7 @@ func runNormal(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Conf
 	return handleNormalSelection(ctx, cfg, appConfig, results, false, in, out, errOut)
 }
 
-func runGit(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) error {
+func runGit(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, in io.Reader, out io.Writer, errOut io.Writer) error {
 	if err := deps.Require("git", "git search"); err != nil {
 		return errors.Wrap(err)
 	}
@@ -90,28 +90,28 @@ func runGit(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config,
 	return handleGitSelection(ctx, cfg, appConfig, results, false, in, out, errOut)
 }
 
-func runNormalNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result, in io.Reader, out io.Writer, errOut io.Writer) error {
-	if cfg.Action == cli.ActionStat {
+func runNormalNoUI(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result, in io.Reader, out io.Writer, errOut io.Writer) error {
+	if cfg.Action == ummruntime.ActionStat {
 		return actions.RenderPathStats(out, cfg.StatMode, results)
 	}
 
-	if cfg.Action == cli.ActionAsk {
+	if cfg.Action == ummruntime.ActionAsk {
 		return handleNormalSelection(ctx, cfg, appConfig, results, true, in, out, errOut)
 	}
 
-	if cfg.Action == cli.ActionSystem {
+	if cfg.Action == ummruntime.ActionSystem {
 		return handleNormalSelection(ctx, cfg, appConfig, results[:1], true, in, out, errOut)
 	}
 
 	return handleNormalSelection(ctx, cfg, appConfig, results[:1], true, in, out, errOut)
 }
 
-func runGitNoUI(ctx context.Context, cfg cli.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result, in io.Reader, out io.Writer, errOut io.Writer) error {
-	if cfg.Action == cli.ActionAsk {
+func runGitNoUI(ctx context.Context, cfg ummruntime.RootConfig, appConfig ummconfig.Config, results []resultfmt.Result, in io.Reader, out io.Writer, errOut io.Writer) error {
+	if cfg.Action == ummruntime.ActionAsk {
 		return handleGitSelection(ctx, cfg, appConfig, results, true, in, out, errOut)
 	}
 
-	if cfg.Action == cli.ActionSystem {
+	if cfg.Action == ummruntime.ActionSystem {
 		firstTracked := actions.FirstTrackedFile(results)
 		if len(firstTracked) == 0 {
 			return errors.New("no tracked file results available for open action")
